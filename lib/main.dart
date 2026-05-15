@@ -49,10 +49,10 @@ class MyApp extends StatelessWidget {
       initialRoute: initialRoute,
       routes: {
         '/splash': (context) => const SplashScreen(),
-        '/login': (context) => const LoginScreen(),
-        '/checkAccount': (context) => const CheckAccountScreen(),
-        '/dashboard': (context) => const DashboardScreen(),
-        '/shopMessages': (context) => const ShopOwnerMessageListScreen(),
+        // '/login': (context) => const LoginScreen(),
+        // '/checkAccount': (context) => const CheckAccountScreen(),
+        // '/dashboard': (context) => const DashboardScreen(),
+        // '/shopMessages': (context) => const ShopOwnerMessageListScreen(),
       },
     );
   }
