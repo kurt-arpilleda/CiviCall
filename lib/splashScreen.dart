@@ -43,7 +43,6 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _initApp() async {
-    // Wait for animation + minimum splash duration (~1900ms, same as Kotlin delay)
     await Future.delayed(const Duration(milliseconds: 1900));
 
     if (!mounted) return;
