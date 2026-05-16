@@ -1,4 +1,3 @@
-// splashScreen.dart - Modernized with fixed layout + animated content transitions
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'login.dart';
