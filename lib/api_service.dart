@@ -85,6 +85,41 @@ class ApiService {
     });
   }
 
+  Future<Map<String, dynamic>> signUp({
+    required String firstName,
+    required String middleName,
+    required String lastName,
+    required String address,
+    required String mobileNum,
+    required int campusId,
+    required int userCategory,
+    required String birthDay,
+    required int gender,
+    required String email,
+    required String password,
+  }) async {
+    return _executeWithRetry(() async {
+      final uri = Uri.parse("${apiUrl}civicall_signup.php");
+      final response = await httpClient.post(
+        uri,
+        body: {
+          'firstName': firstName,
+          'middleName': middleName,
+          'lastName': lastName,
+          'address': address,
+          'mobileNum': mobileNum,
+          'campusId': campusId.toString(),
+          'userCategory': userCategory.toString(),
+          'birthDay': birthDay,
+          'gender': gender.toString(),
+          'email': email,
+          'password': password,
+        },
+      ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
+
   static void setupHttpOverrides() {
     HttpOverrides.global = MyHttpOverrides();
   }

@@ -32,6 +32,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _agreedToTerms = false;
+  bool _isSubmitting = false;
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -129,21 +130,70 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
     }
   }
 
-  void _submit() {
-    if (_formKey.currentState!.validate()) {
-      if (!_agreedToTerms) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please agree to the Terms and Conditions and Privacy Policy.'),
-            backgroundColor: AppTheme.redPink,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        return;
-      }
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_selectedDateOfBirth == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Sign Up UI demo — no backend call'),
+          content: Text('Date of birth is required.'),
+          backgroundColor: AppTheme.redPink,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (!_agreedToTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please agree to the Terms and Conditions and Privacy Policy.'),
+          backgroundColor: AppTheme.redPink,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    final int userCategoryValue = _selectedUserCategory == 'Student' ? 0 : 1;
+    final int genderValue = _selectedGender == 'Male' ? 0 : 1;
+    final String birthDayFormatted =
+        '${_selectedDateOfBirth!.year}-${_selectedDateOfBirth!.month.toString().padLeft(2, '0')}-${_selectedDateOfBirth!.day.toString().padLeft(2, '0')}';
+
+    final ApiService api = ApiService();
+    final result = await api.signUp(
+      firstName: _firstNameController.text.trim(),
+      middleName: _middleNameController.text.trim(),
+      lastName: _lastNameController.text.trim(),
+      address: _addressController.text.trim(),
+      mobileNum: _mobileController.text.trim(),
+      campusId: _selectedCampusId!,
+      userCategory: userCategoryValue,
+      birthDay: birthDayFormatted,
+      gender: genderValue,
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+    );
+
+    setState(() => _isSubmitting = false);
+
+    if (!mounted) return;
+
+    if (result['success'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Registration successful! You can now sign in.'),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Registration failed. Please try again.'),
           backgroundColor: AppTheme.redPink,
           behavior: SnackBarBehavior.floating,
         ),
@@ -223,9 +273,9 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                                   keyboardType: TextInputType.number,
                                   maxLength: 11,
                                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                                  decoration: InputDecoration(
+                                  decoration: const InputDecoration(
                                     hintText: '09XXXXXXXXX',
-                                    prefixIcon: const Icon(Icons.phone_outlined, size: 20),
+                                    prefixIcon: Icon(Icons.phone_outlined, size: 20),
                                     counterText: '',
                                   ),
                                   validator: (v) {
@@ -444,9 +494,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
             children: const [
               TextSpan(
                 text: 'Change.',
-                style: TextStyle(
-                  color: AppTheme.redPink,
-                ),
+                style: TextStyle(color: AppTheme.redPink),
               ),
             ],
           ),
@@ -533,10 +581,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
           value: campus['campusId'] as int,
           child: Text(
             campus['campusName'] as String,
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppTheme.darkGray,
-            ),
+            style: const TextStyle(fontSize: 14, color: AppTheme.darkGray),
             overflow: TextOverflow.ellipsis,
           ),
         );
@@ -567,10 +612,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
         value: item,
         child: Text(
           item,
-          style: const TextStyle(
-            fontSize: 14,
-            color: AppTheme.darkGray,
-          ),
+          style: const TextStyle(fontSize: 14, color: AppTheme.darkGray),
           overflow: TextOverflow.ellipsis,
         ),
       ))
@@ -660,17 +702,27 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
       width: double.infinity,
       height: 52,
       child: ElevatedButton(
-        onPressed: _submit,
+        onPressed: _isSubmitting ? null : _submit,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppTheme.redPink,
           foregroundColor: AppTheme.white,
+          disabledBackgroundColor: AppTheme.redPink.withOpacity(0.6),
           elevation: 0,
           shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
         ),
-        child: const Text(
+        child: _isSubmitting
+            ? const SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(
+            color: Colors.white,
+            strokeWidth: 2.5,
+          ),
+        )
+            : const Text(
           'Register',
           style: TextStyle(
             fontSize: 16,
