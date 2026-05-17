@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:civicall/theme/app_theme.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PrivacyPolicyScreen extends StatefulWidget {
   const PrivacyPolicyScreen({Key? key}) : super(key: key);
@@ -102,7 +103,21 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen>
                     ),
                     _buildSectionHeading('Contact Information'),
                     _buildBodyText(
-                      'If you have any questions or concerns regarding this Privacy Policy, please contact us at [CivicallApp@gmail.com].',
+                      'If you have any questions or concerns regarding this Privacy Policy, please contact us at',
+                    ),
+                    _buildClickableContact(
+                      icon: Icons.email_outlined,
+                      label: 'CivicallApp@gmail.com',
+                      onTap: () async {
+                        final uri = Uri(
+                          scheme: 'mailto',
+                          path: 'CivicallApp@gmail.com',
+                          queryParameters: {
+                            'subject': 'Privacy Policy Inquiry - CiviCall App',
+                          },
+                        );
+                        if (await canLaunchUrl(uri)) await launchUrl(uri);
+                      },
                     ),
                   ],
                 ),
@@ -246,6 +261,37 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen>
           height: 1.65,
           color: AppTheme.darkGray.withOpacity(0.72),
           fontFamily: AppTheme.fontFamily,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClickableContact({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: AppTheme.redPink),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 15,
+                height: 1.65,
+                color: AppTheme.redPink,
+                fontWeight: FontWeight.w600,
+                decoration: TextDecoration.underline,
+                decorationColor: AppTheme.redPink,
+                fontFamily: AppTheme.fontFamily,
+              ),
+            ),
+          ],
         ),
       ),
     );

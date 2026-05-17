@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:civicall/theme/app_theme.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class TermsConditionsScreen extends StatefulWidget {
   const TermsConditionsScreen({Key? key}) : super(key: key);
@@ -104,7 +105,15 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen>
                     ),
                     _buildSectionHeading('Contact Information'),
                     _buildBodyText(
-                      'For any queries or concerns regarding these terms, contact us at [09267383649].',
+                      'For any queries or concerns regarding these terms, contact us at',
+                    ),
+                    _buildClickableContact(
+                      icon: Icons.phone_outlined,
+                      label: '09267383649',
+                      onTap: () async {
+                        final uri = Uri(scheme: 'tel', path: '09267383649');
+                        if (await canLaunchUrl(uri)) await launchUrl(uri);
+                      },
                     ),
                   ],
                 ),
@@ -233,6 +242,37 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen>
           height: 1.65,
           color: AppTheme.darkGray.withOpacity(0.72),
           fontFamily: AppTheme.fontFamily,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClickableContact({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: AppTheme.redPink),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 15,
+                height: 1.65,
+                color: AppTheme.redPink,
+                fontWeight: FontWeight.w600,
+                decoration: TextDecoration.underline,
+                decorationColor: AppTheme.redPink,
+                fontFamily: AppTheme.fontFamily,
+              ),
+            ),
+          ],
         ),
       ),
     );

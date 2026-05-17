@@ -235,57 +235,36 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                               ]),
                               const SizedBox(height: 16),
                               _buildSectionCard([
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      flex: 3,
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          _buildLabel('Date of Birth'),
-                                          const SizedBox(height: 8),
-                                          GestureDetector(
-                                            onTap: _pickDateOfBirth,
-                                            child: AbsorbPointer(
-                                              child: TextFormField(
-                                                readOnly: true,
-                                                decoration: InputDecoration(
-                                                  hintText: 'MM / DD / YYYY',
-                                                  prefixIcon: const Icon(Icons.calendar_today_outlined, size: 18),
-                                                ),
-                                                controller: TextEditingController(
-                                                  text: _selectedDateOfBirth != null
-                                                      ? '${_selectedDateOfBirth!.month.toString().padLeft(2, '0')} / ${_selectedDateOfBirth!.day.toString().padLeft(2, '0')} / ${_selectedDateOfBirth!.year}'
-                                                      : '',
-                                                ),
-                                                validator: (_) => _selectedDateOfBirth == null ? 'Required' : null,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
+                                _buildLabel('Date of Birth'),
+                                const SizedBox(height: 8),
+                                GestureDetector(
+                                  onTap: _pickDateOfBirth,
+                                  child: AbsorbPointer(
+                                    child: TextFormField(
+                                      readOnly: true,
+                                      decoration: const InputDecoration(
+                                        hintText: 'MM / DD / YYYY',
+                                        prefixIcon: Icon(Icons.calendar_today_outlined, size: 18),
                                       ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          _buildLabel('Gender'),
-                                          const SizedBox(height: 8),
-                                          _buildDropdown(
-                                            value: _selectedGender,
-                                            hint: 'Select',
-                                            icon: Icons.wc_outlined,
-                                            items: _genders,
-                                            onChanged: (v) => setState(() => _selectedGender = v),
-                                            validator: (v) => v == null ? 'Required' : null,
-                                          ),
-                                        ],
+                                      controller: TextEditingController(
+                                        text: _selectedDateOfBirth != null
+                                            ? '${_selectedDateOfBirth!.month.toString().padLeft(2, '0')} / ${_selectedDateOfBirth!.day.toString().padLeft(2, '0')} / ${_selectedDateOfBirth!.year}'
+                                            : '',
                                       ),
+                                      validator: (_) => _selectedDateOfBirth == null ? 'Date of birth is required' : null,
                                     ),
-                                  ],
+                                  ),
+                                ),
+                                const SizedBox(height: 18),
+                                _buildLabel('Gender'),
+                                const SizedBox(height: 8),
+                                _buildDropdown(
+                                  value: _selectedGender,
+                                  hint: 'Select gender',
+                                  icon: Icons.wc_outlined,
+                                  items: _genders,
+                                  onChanged: (v) => setState(() => _selectedGender = v),
+                                  validator: (v) => v == null ? 'Please select a gender' : null,
                                 ),
                               ]),
                               const SizedBox(height: 16),
