@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:civicall/theme/app_theme.dart';
 import 'options.dart';
+import 'longText/termsConditions.dart';
+import 'longText/privacyPolicy.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
@@ -564,35 +566,59 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: GestureDetector(
-            onTap: () => setState(() => _agreedToTerms = !_agreedToTerms),
-            child: RichText(
-              text: TextSpan(
-                text: 'I have read and agree to ',
+          child: Wrap(
+            children: [
+              Text(
+                'I have read and agree to ',
                 style: TextStyle(
                   fontSize: 13.5,
                   color: AppTheme.darkGray.withOpacity(0.65),
                   height: 1.5,
                 ),
-                children: const [
-                  TextSpan(
-                    text: 'Terms and Conditions',
-                    style: TextStyle(
-                      color: AppTheme.redPink,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  TextSpan(text: ' and '),
-                  TextSpan(
-                    text: 'Privacy Policy',
-                    style: TextStyle(
-                      color: AppTheme.redPink,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
               ),
-            ),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const TermsConditionsScreen()),
+                  );
+                },
+                child: const Text(
+                  'Terms and Conditions',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    color: AppTheme.redPink,
+                    fontWeight: FontWeight.w600,
+                    height: 1.5,
+                  ),
+                ),
+              ),
+              Text(
+                ' and ',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  color: AppTheme.darkGray.withOpacity(0.65),
+                  height: 1.5,
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()),
+                  );
+                },
+                child: const Text(
+                  'Privacy Policy',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    color: AppTheme.redPink,
+                    fontWeight: FontWeight.w600,
+                    height: 1.5,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
