@@ -119,6 +119,38 @@ class ApiService {
       return _handleResponse(response);
     });
   }
+
+  Future<Map<String, dynamic>> login({
+    required String email,
+    required String password,
+  }) async {
+    return _executeWithRetry(() async {
+      final deviceId = await _getOrCreateDeviceId();
+      final uri = Uri.parse("${apiUrl}civicall_login.php");
+      final response = await httpClient.post(
+        uri,
+        body: {
+          'email': email,
+          'password': password,
+          'deviceId': deviceId,
+        },
+      ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
+
+  Future<void> saveAuthToken(String token) async {
+    await _secureStorage.write(key: 'authToken', value: token);
+  }
+
+  Future<String?> getAuthToken() async {
+    return await _secureStorage.read(key: 'authToken');
+  }
+
+  Future<void> clearAuthToken() async {
+    await _secureStorage.delete(key: 'authToken');
+  }
+
   Future<String?> getDeviceId() async {
     return await _secureStorage.read(key: 'deviceId');
   }
