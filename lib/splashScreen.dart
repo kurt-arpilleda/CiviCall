@@ -1,3 +1,4 @@
+// splashScreen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'login.dart';
@@ -36,7 +37,7 @@ class SplashLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.darkGray,
+      backgroundColor: AppTheme.redPink,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -48,21 +49,23 @@ class SplashLogo extends StatelessWidget {
               fit: BoxFit.contain,
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'CiviCall',
               style: TextStyle(
-                fontFamily: 'OleoScript',
+                fontFamily: AppTheme.fontFamily,
+                fontWeight: FontWeight.w900,
                 fontSize: 65,
-                letterSpacing: 0.1,
+                letterSpacing: -0.5,
                 color: Colors.white,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Serving the community,\nCollaborating with others',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'Oswald',
+                fontFamily: AppTheme.fontFamily,
+                fontWeight: FontWeight.w400,
                 fontSize: 18,
                 letterSpacing: 0.2,
                 color: Colors.white70,
@@ -75,10 +78,6 @@ class SplashLogo extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// Data model
-// ─────────────────────────────────────────────────────────────
-
 class _OnboardingPage {
   final String image;
   final String title;
@@ -90,10 +89,6 @@ class _OnboardingPage {
   });
 }
 
-// ─────────────────────────────────────────────────────────────
-// Main screen — background cross-fades, card content slides in
-// ─────────────────────────────────────────────────────────────
-
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({Key? key}) : super(key: key);
 
@@ -104,7 +99,7 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen>
     with SingleTickerProviderStateMixin {
   int _currentPage = 0;
-  bool _swipingLeft = true; // true = going forward, false = going back
+  bool _swipingLeft = true;
 
   final List<_OnboardingPage> _pages = const [
     _OnboardingPage(
@@ -157,19 +152,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         onHorizontalDragEnd: (details) {
           final velocity = details.primaryVelocity ?? 0;
           if (velocity < -300) {
-            _next(); // swipe left → next
+            _next();
           } else if (velocity > 300) {
-            _prev(); // swipe right → prev
+            _prev();
           }
         },
         child: Stack(
           children: [
-            // ── Background: cross-fades between images ──────────
             _AnimatedBackground(
               imagePath: _pages[_currentPage].image,
             ),
-
-            // ── Bottom card: only the content animates ──────────
             Align(
               alignment: Alignment.bottomCenter,
               child: Container(
@@ -188,7 +180,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // ── Animated text content ──────────────────
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 350),
                       transitionBuilder: (child, animation) {
@@ -212,10 +203,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         page: _pages[_currentPage],
                       ),
                     ),
-
                     const SizedBox(height: 16),
-
-                    // ── Dot indicators ─────────────────────────
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(
@@ -235,10 +223,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 16),
-
-                    // ── Skip ───────────────────────────────────
                     OutlinedButton(
                       onPressed: _goToLogin,
                       style: OutlinedButton.styleFrom(
@@ -250,15 +235,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       child: Text(
                         'Skip',
                         style: TextStyle(
-                          fontFamily: 'DMSansRegular',
+                          fontFamily: AppTheme.fontFamily,
                           fontSize: 17,
                           color: AppTheme.redPink,
                         ),
                       ),
                     ),
                     const SizedBox(height: 8),
-
-                    // ── Next / Get Started ─────────────────────
                     ElevatedButton(
                       onPressed: _next,
                       style: ElevatedButton.styleFrom(
@@ -272,7 +255,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                             ? 'Get Started'
                             : 'Next',
                         style: const TextStyle(
-                          fontFamily: 'DMSansRegular',
                           fontSize: 17,
                           color: Colors.white,
                         ),
@@ -283,15 +265,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               ),
             ),
           ],
-        ), // Stack
-      ), // GestureDetector
+        ),
+      ),
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────
-// Background cross-fade widget
-// ─────────────────────────────────────────────────────────────
 
 class _AnimatedBackground extends StatelessWidget {
   final String imagePath;
@@ -317,10 +295,6 @@ class _AnimatedBackground extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// Animated content block (title + desc)
-// ─────────────────────────────────────────────────────────────
-
 class _PageContent extends StatelessWidget {
   final _OnboardingPage page;
   const _PageContent({Key? key, required this.page}) : super(key: key);
@@ -334,7 +308,6 @@ class _PageContent extends StatelessWidget {
           page.title,
           textAlign: TextAlign.center,
           style: const TextStyle(
-            fontFamily: 'DMSansBold',
             fontSize: 21,
             fontWeight: FontWeight.bold,
             color: AppTheme.redPink,
@@ -345,7 +318,6 @@ class _PageContent extends StatelessWidget {
           page.desc,
           textAlign: TextAlign.center,
           style: const TextStyle(
-            fontFamily: 'DMSansMedium',
             fontSize: 15,
             color: Colors.black,
           ),
