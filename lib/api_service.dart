@@ -119,6 +119,9 @@ class ApiService {
       return _handleResponse(response);
     });
   }
+  Future<String?> getDeviceId() async {
+    return await _secureStorage.read(key: 'deviceId');
+  }
 
   static void setupHttpOverrides() {
     HttpOverrides.global = MyHttpOverrides();
