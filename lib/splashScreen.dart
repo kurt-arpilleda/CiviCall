@@ -37,7 +37,7 @@ class SplashLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.redPink,
+      backgroundColor: AppTheme.darkGray,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -109,13 +109,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       'Volunteer for community building; make a positive impact for others. Strengthen bonds, create unity, and leave a legacy of cooperation and kindness. Inspire others to build a brighter future.',
     ),
     _OnboardingPage(
-      image: 'assets/images/volunteer2.jpg',
+      image: 'assets/images/volunteer3.jpg',
       title: 'Join the Effort to Revitalize our Environment',
       desc:
       'Contribute to environmental restoration. Make a difference, preserve nature, and leave a lasting impact for a sustainable future.',
     ),
     _OnboardingPage(
-      image: 'assets/images/volunteer3.jpg',
+      image: 'assets/images/volunteer2.jpg',
       title: 'Lead by Example for the Next Generation',
       desc:
       'Become a role model for the next generation. Inspire and guide them towards a brighter future.',
