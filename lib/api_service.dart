@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 class ApiService {
-  static const String apiUrl = "https://192.168.1.57/CiviCall/CiviCallAPI";
+  static const String apiUrl = "https://192.168.1.57/CiviCall/CiviCallAPI/";
   static const Duration requestTimeout = Duration(seconds: 15);
   static const Duration requestTimeoutUploadImage = Duration(seconds: 45);
   static const int maxRetries = 3;
@@ -77,177 +77,12 @@ class ApiService {
     return {"success": false, "message": "Waiting for Network"};
   }
 
-  Future<Map<String, dynamic>> signUp({
-    required String firstName,
-    required String surName,
-    required int gender,
-    required String email,
-    required String phoneNum,
-    required String password,
-    required int signupType,
-  }) async {
+  Future<Map<String, dynamic>> fetchCampus() async {
     return _executeWithRetry(() async {
-      final uri = Uri.parse("${apiUrl}cares_signup.php");
-      final response = await httpClient.post(
-        uri,
-        body: {
-          'firstName': firstName,
-          'surName': surName,
-          'gender': gender.toString(),
-          'email': email,
-          'phoneNum': phoneNum,
-          'password': password,
-          'signupType': signupType.toString(),
-        },
-      ).timeout(requestTimeout);
-
+      final uri = Uri.parse("${apiUrl}civicall_fetchCampus.php");
+      final response = await httpClient.get(uri).timeout(requestTimeout);
       return _handleResponse(response);
     });
-  }
-
-  Future<Map<String, dynamic>> signUpWithGoogle({
-    required String firstName,
-    required String surName,
-    required String email,
-    required String googleId,
-    required String photoUrl,
-  }) async {
-    return _executeWithRetry(() async {
-      final uri = Uri.parse("${apiUrl}cares_signup.php");
-      final response = await httpClient.post(
-        uri,
-        body: {
-          'firstName': firstName,
-          'surName': surName,
-          'gender': '0',
-          'email': email,
-          'phoneNum': '',
-          'password': '',
-          'signupType': '1',
-          'googleId': googleId,
-          'photoUrl': photoUrl,
-        },
-      ).timeout(requestTimeout);
-
-      return _handleResponse(response);
-    });
-  }
-
-  Future<Map<String, dynamic>> login({
-    required String email,
-    required String password,
-    String? fcmToken,
-  }) async {
-    return _executeWithRetry(() async {
-      final deviceId = await _getOrCreateDeviceId();
-      final uri = Uri.parse("${apiUrl}cares_login.php");
-      final response = await httpClient.post(
-        uri,
-        body: {
-          'email': email,
-          'password': password,
-          'deviceId': deviceId,
-          if (fcmToken != null) 'fcmToken': fcmToken,
-        },
-      ).timeout(requestTimeout);
-
-      return _handleResponse(response);
-    });
-  }
-
-  Future<Map<String, dynamic>> loginWithGoogle({
-    required String email,
-    required String googleId,
-    String? fcmToken,
-  }) async {
-    return _executeWithRetry(() async {
-      final deviceId = await _getOrCreateDeviceId();
-      final uri = Uri.parse("${apiUrl}cares_login.php");
-      final response = await httpClient.post(
-        uri,
-        body: {
-          'email': email,
-          'googleId': googleId,
-          'deviceId': deviceId,
-          'isGoogleLogin': '1',
-          if (fcmToken != null) 'fcmToken': fcmToken,
-        },
-      ).timeout(requestTimeout);
-
-      return _handleResponse(response);
-    });
-  }
-
-  Future<Map<String, dynamic>> sendPasswordResetEmail({
-    required String emailOrPhone,
-  }) async {
-    return _executeWithRetry(() async {
-      final uri = Uri.parse("${apiUrl}cares_reset_password.php");
-      final response = await httpClient.post(
-        uri,
-        body: {'emailOrPhone': emailOrPhone},
-      ).timeout(const Duration(seconds: 30));
-
-      return _handleResponse(response);
-    });
-  }
-
-
-  Future<Map<String, dynamic>> logout() async {
-    return _executeWithRetry(() async {
-      final token = await getAuthToken();
-      if (token == null) {
-        return {"success": false, "message": "Waiting for Network"};
-      }
-
-      final uri = Uri.parse("${apiUrl}cares_logout.php");
-      final response = await httpClient.post(
-        uri,
-        body: {'token': token},
-      ).timeout(requestTimeout);
-
-      return _handleResponse(response);
-    });
-  }
-
-
-  Future<Map<String, dynamic>> getFcmTokensByAccountId(int accountId) async {
-    return _executeWithRetry(() async {
-      final token = await getAuthToken();
-      if (token == null) {
-        return {"success": false, "message": "Waiting for Network"};
-      }
-
-      final uri = Uri.parse("${apiUrl}cares_getFcmTokens.php");
-      final response = await httpClient.post(
-        uri,
-        body: {
-          'token': token,
-          'accountId': accountId.toString(),
-        },
-      ).timeout(requestTimeout);
-
-      return _handleResponse(response);
-    });
-  }
-
-
-
-
-  Future<void> saveAuthToken(String token) async {
-    await _secureStorage.write(key: 'authToken', value: token);
-  }
-
-  Future<String?> getAuthToken() async {
-    return await _secureStorage.read(key: 'authToken');
-  }
-
-  Future<void> clearAuthToken() async {
-    await _secureStorage.delete(key: 'authToken');
-  }
-
-  Future<String?> getDeviceId() async {
-    return await _secureStorage.read(key: 'deviceId');
   }
 
   static void setupHttpOverrides() {

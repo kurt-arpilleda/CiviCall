@@ -4,6 +4,7 @@ import 'package:civicall/theme/app_theme.dart';
 import 'options.dart';
 import 'longText/termsConditions.dart';
 import 'longText/privacyPolicy.dart';
+import 'api_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
@@ -24,7 +25,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  String? _selectedCampus;
+  int? _selectedCampusId;
   String? _selectedUserCategory;
   String? _selectedGender;
   DateTime? _selectedDateOfBirth;
@@ -36,9 +37,11 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
-  final List<String> _campuses = AppOptions.campuses;
   final List<String> _userCategories = AppOptions.userCategories;
   final List<String> _genders = AppOptions.genders;
+
+  List<Map<String, dynamic>> _campuses = [];
+  bool _isLoadingCampuses = true;
 
   @override
   void initState() {
@@ -59,6 +62,29 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
       curve: Curves.easeOut,
     ));
     _animationController.forward();
+    _fetchCampuses();
+  }
+
+  Future<void> _fetchCampuses() async {
+    final ApiService api = ApiService();
+    final result = await api.fetchCampus();
+    if (result['success'] == true && result['campuses'] != null) {
+      setState(() {
+        _campuses = List<Map<String, dynamic>>.from(result['campuses']);
+        _isLoadingCampuses = false;
+      });
+    } else {
+      setState(() {
+        _isLoadingCampuses = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to load campuses'),
+          backgroundColor: AppTheme.redPink,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
@@ -213,14 +239,12 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                               _buildSectionCard([
                                 _buildLabel('Campus'),
                                 const SizedBox(height: 8),
-                                _buildDropdown(
-                                  value: _selectedCampus,
-                                  hint: 'Select your campus',
-                                  icon: Icons.school_outlined,
-                                  items: _campuses,
-                                  onChanged: (v) => setState(() => _selectedCampus = v),
-                                  validator: (v) => v == null ? 'Please select a campus' : null,
-                                ),
+                                _isLoadingCampuses
+                                    ? const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  child: Center(child: CircularProgressIndicator()),
+                                )
+                                    : _buildCampusDropdown(),
                                 const SizedBox(height: 18),
                                 _buildLabel('User Category'),
                                 const SizedBox(height: 8),
@@ -492,6 +516,33 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
         prefixIcon: Icon(icon, size: 20),
       ),
       validator: validator,
+    );
+  }
+
+  Widget _buildCampusDropdown() {
+    return DropdownButtonFormField<int>(
+      value: _selectedCampusId,
+      isExpanded: true,
+      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.darkGray),
+      decoration: const InputDecoration(
+        hintText: 'Select your campus',
+        prefixIcon: Icon(Icons.school_outlined, size: 20),
+      ),
+      items: _campuses.map((campus) {
+        return DropdownMenuItem<int>(
+          value: campus['campusId'] as int,
+          child: Text(
+            campus['campusName'] as String,
+            style: const TextStyle(
+              fontSize: 14,
+              color: AppTheme.darkGray,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        );
+      }).toList(),
+      onChanged: (value) => setState(() => _selectedCampusId = value),
+      validator: (value) => value == null ? 'Please select a campus' : null,
     );
   }
 
