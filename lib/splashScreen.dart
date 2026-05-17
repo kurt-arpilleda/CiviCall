@@ -36,7 +36,7 @@ class SplashLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.redPink,
+      backgroundColor: AppTheme.darkGray,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
