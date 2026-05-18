@@ -1,4 +1,3 @@
-// checkAccount.dart
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:civicall/theme/app_theme.dart';
@@ -23,7 +22,6 @@ class _CheckAccountScreenState extends State<CheckAccountScreen> {
     super.initState();
     _checkConnectivityAndAccount();
   }
-
   Future<void> _checkConnectivityAndAccount() async {
     final connectivityResult = await Connectivity().checkConnectivity();
     if (connectivityResult == ConnectivityResult.none) {
@@ -39,6 +37,7 @@ class _CheckAccountScreenState extends State<CheckAccountScreen> {
   Future<void> _verifyAccount() async {
     try {
       final response = await _apiService.getUserData();
+
       if (response['success'] == true) {
         if (mounted) {
           Navigator.pushReplacement(
@@ -47,12 +46,21 @@ class _CheckAccountScreenState extends State<CheckAccountScreen> {
           );
         }
       } else {
-        await _apiService.clearAuthToken();
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const LoginScreen()),
-          );
+        final message = response['message'] ?? '';
+        if (message.contains('Invalid or expired token') ||
+            message.contains('No token')) {
+          await _apiService.clearAuthToken();
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginScreen()),
+            );
+          }
+        } else {
+          setState(() {
+            _noInternet = true;
+            _isLoading = false;
+          });
         }
       }
     } catch (e) {
