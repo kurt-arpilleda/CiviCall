@@ -1,7 +1,8 @@
+// login.dart
 import 'package:flutter/material.dart';
 import 'package:civicall/theme/app_theme.dart';
 import 'package:civicall/api_service.dart';
-import 'package:civicall/dashboard.dart';
+import 'package:civicall/checkAccount.dart';
 import 'signup.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -82,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       );
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const DashboardScreen()),
+        MaterialPageRoute(builder: (context) => const CheckAccountScreen()),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

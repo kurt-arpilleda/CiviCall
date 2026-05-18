@@ -1,3 +1,4 @@
+// api_service.dart (add logout method)
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -134,6 +135,36 @@ class ApiService {
           'password': password,
           'deviceId': deviceId,
         },
+      ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
+
+  Future<Map<String, dynamic>> logout() async {
+    return _executeWithRetry(() async {
+      final token = await getAuthToken();
+      if (token == null) {
+        return {"success": false, "message": "Not logged in"};
+      }
+      final uri = Uri.parse("${apiUrl}civicall_logout.php");
+      final response = await httpClient.post(
+        uri,
+        body: {'authToken': token},
+      ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
+
+  Future<Map<String, dynamic>> getUserData() async {
+    return _executeWithRetry(() async {
+      final token = await getAuthToken();
+      if (token == null) {
+        return {"success": false, "message": "No token"};
+      }
+      final uri = Uri.parse("${apiUrl}civicall_get_user.php");
+      final response = await httpClient.post(
+        uri,
+        body: {'authToken': token},
       ).timeout(requestTimeout);
       return _handleResponse(response);
     });

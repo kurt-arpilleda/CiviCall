@@ -1,6 +1,7 @@
 // splashScreen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'login.dart';
 import 'theme/app_theme.dart';
 
@@ -22,11 +23,19 @@ class _SplashScreenState extends State<SplashScreen> {
     });
   }
 
+  Future<void> _onGetStarted() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isFirstOpen', false);
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, '/login');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
-      child: _showOnboarding ? const OnboardingScreen() : const SplashLogo(),
+      child: _showOnboarding ? OnboardingScreen(onGetStarted: _onGetStarted) : const SplashLogo(),
     );
   }
 }
@@ -90,7 +99,8 @@ class _OnboardingPage {
 }
 
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({Key? key}) : super(key: key);
+  final VoidCallback onGetStarted;
+  const OnboardingScreen({Key? key, required this.onGetStarted}) : super(key: key);
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -122,9 +132,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     ),
   ];
 
-  void _goToLogin() =>
-      Navigator.pushReplacementNamed(context, '/login');
-
   void _next() {
     if (_currentPage < _pages.length - 1) {
       setState(() {
@@ -132,7 +139,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         _currentPage++;
       });
     } else {
-      _goToLogin();
+      widget.onGetStarted();
     }
   }
 
@@ -225,7 +232,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     ),
                     const SizedBox(height: 16),
                     OutlinedButton(
-                      onPressed: _goToLogin,
+                      onPressed: widget.onGetStarted,
                       style: OutlinedButton.styleFrom(
                         side: BorderSide(color: AppTheme.redPink),
                         shape: RoundedRectangleBorder(
