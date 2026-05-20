@@ -1,7 +1,9 @@
+// dashboard.dart
 import 'package:flutter/material.dart';
 import 'package:civicall/theme/app_theme.dart';
 import 'package:civicall/api_service.dart';
 import 'package:civicall/login.dart';
+import 'package:civicall/google_signin_service.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -32,6 +34,7 @@ class DashboardScreen extends StatelessWidget {
     final api = ApiService();
     await api.logout();
     await api.clearAuthToken();
+    await GoogleSignInService.signOut();
     if (context.mounted) {
       Navigator.pushReplacement(
         context,

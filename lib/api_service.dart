@@ -1,3 +1,4 @@
+// api_service.dart
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -133,6 +134,38 @@ class ApiService {
           'email': email,
           'password': password,
           'deviceId': deviceId,
+        },
+      ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
+
+  Future<Map<String, dynamic>> loginWithGoogle({
+    required String email,
+    required String googleId,
+    required String firstName,
+    required String lastName,
+    String? photoUrl,
+    String? birthDay,
+    int? gender,
+    String? mobileNum,
+  }) async {
+    return _executeWithRetry(() async {
+      final deviceId = await _getOrCreateDeviceId();
+      final uri = Uri.parse("${apiUrl}civicall_login.php");
+      final response = await httpClient.post(
+        uri,
+        body: {
+          'email': email,
+          'googleId': googleId,
+          'deviceId': deviceId,
+          'isGoogleLogin': '1',
+          'firstName': firstName,
+          'lastName': lastName,
+          if (photoUrl != null) 'photoUrl': photoUrl,
+          if (birthDay != null) 'birthDay': birthDay,
+          if (gender != null) 'gender': gender.toString(),
+          if (mobileNum != null) 'mobileNum': mobileNum,
         },
       ).timeout(requestTimeout);
       return _handleResponse(response);

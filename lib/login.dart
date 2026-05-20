@@ -1,7 +1,10 @@
+// login.dart
 import 'package:flutter/material.dart';
 import 'package:civicall/theme/app_theme.dart';
 import 'package:civicall/api_service.dart';
 import 'package:civicall/checkAccount.dart';
+import 'package:civicall/google_signin_service.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'signup.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -16,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -95,6 +99,81 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     }
 
     setState(() => _isLoading = false);
+  }
+
+  Future<void> _googleSignIn() async {
+    setState(() => _isGoogleLoading = true);
+
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignInService.signIn();
+      if (googleUser == null) {
+        setState(() => _isGoogleLoading = false);
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final String email = googleUser.email;
+      final String googleId = googleAuth.idToken ?? googleUser.id;
+
+      String firstName = '';
+      String lastName = '';
+      if (googleUser.displayName != null) {
+        final List<String> nameParts = googleUser.displayName!.split(' ');
+        firstName = nameParts.isNotEmpty ? nameParts[0] : '';
+        lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+      }
+
+      final String? photoUrl = googleUser.photoUrl;
+
+      final ApiService api = ApiService();
+      final result = await api.loginWithGoogle(
+        email: email,
+        googleId: googleId,
+        firstName: firstName,
+        lastName: lastName,
+        photoUrl: photoUrl,
+      );
+
+      if (!mounted) {
+        setState(() => _isGoogleLoading = false);
+        return;
+      }
+
+      if (result['success'] == true) {
+        await api.saveAuthToken(result['token']);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Google Sign In successful'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const CheckAccountScreen()),
+        );
+      } else {
+        await GoogleSignInService.signOut();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Google Sign In failed'),
+            backgroundColor: AppTheme.redPink,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        setState(() => _isGoogleLoading = false);
+      }
+    } catch (e) {
+      await GoogleSignInService.signOut();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Google Sign In error: ${e.toString()}'),
+          backgroundColor: AppTheme.redPink,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      setState(() => _isGoogleLoading = false);
+    }
   }
 
   @override
@@ -324,7 +403,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       width: double.infinity,
       height: 52,
       child: OutlinedButton(
-        onPressed: () {},
+        onPressed: _isGoogleLoading ? null : _googleSignIn,
         style: OutlinedButton.styleFrom(
           foregroundColor: AppTheme.darkGray,
           side: BorderSide(color: AppTheme.darkGray.withOpacity(0.18), width: 1.5),
@@ -334,7 +413,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           backgroundColor: AppTheme.white,
           elevation: 0,
         ),
-        child: Row(
+        child: _isGoogleLoading
+            ? const SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+          ),
+        )
+            : Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Image.network(
