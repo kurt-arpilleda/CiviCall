@@ -6,6 +6,7 @@ import 'package:civicall/checkAccount.dart';
 import 'package:civicall/google_signin_service.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'signup.dart';
+import 'forgot_password_dialog.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -331,7 +332,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () {},
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => const ForgotPasswordDialog(),
+                );
+              },
               style: TextButton.styleFrom(
                 padding: EdgeInsets.zero,
                 minimumSize: Size.zero,

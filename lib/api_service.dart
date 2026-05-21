@@ -1,4 +1,4 @@
-// api_service.dart
+// api_service.dart (with new method)
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -198,6 +198,19 @@ class ApiService {
         uri,
         body: {'authToken': token},
       ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
+
+  Future<Map<String, dynamic>> sendPasswordResetEmail({
+    required String emailOrPhone,
+  }) async {
+    return _executeWithRetry(() async {
+      final uri = Uri.parse("${apiUrl}civicall_reset_password.php");
+      final response = await httpClient.post(
+        uri,
+        body: {'emailOrPhone': emailOrPhone},
+      ).timeout(const Duration(seconds: 30));
       return _handleResponse(response);
     });
   }
