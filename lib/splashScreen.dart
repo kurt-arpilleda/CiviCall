@@ -17,8 +17,11 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
+    // Always show the logo for 2 seconds, then show onboarding
     Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) setState(() => _showOnboarding = true);
+      if (mounted) {
+        setState(() => _showOnboarding = true);
+      }
     });
   }
 
@@ -34,7 +37,9 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
-      child: _showOnboarding ? OnboardingScreen(onGetStarted: _onGetStarted) : const SplashLogo(),
+      child: _showOnboarding
+          ? OnboardingScreen(onGetStarted: _onGetStarted)
+          : const SplashLogo(),
     );
   }
 }

@@ -130,6 +130,20 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
     }
   }
 
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Password is required';
+    }
+    if (value.length < 8) {
+      return 'Password must be at least 8 characters';
+    }
+    final passwordRegex = RegExp(r'^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[!@#\$&*~]).{8,}$');
+    if (!passwordRegex.hasMatch(value)) {
+      return 'Password must include uppercase, lowercase, number, and special character';
+    }
+    return null;
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -374,11 +388,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                                       onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                                     ),
                                   ),
-                                  validator: (v) {
-                                    if (v == null || v.isEmpty) return 'Password is required';
-                                    if (v.length < 8) return 'Password must be at least 8 characters long';
-                                    return null;
-                                  },
+                                  validator: _validatePassword,
                                 ),
                                 const SizedBox(height: 18),
                                 _buildLabel('Confirm Password'),

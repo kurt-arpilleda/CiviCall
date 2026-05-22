@@ -9,17 +9,11 @@ import 'api_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final prefs = await SharedPreferences.getInstance();
-  final isFirstOpen = prefs.getBool('isFirstOpen') ?? true;
   final apiService = ApiService();
   final authToken = await apiService.getAuthToken();
 
   runApp(MyApp(
-    initialRoute: isFirstOpen
-        ? '/splash'
-        : authToken != null
-        ? '/checkAccount'
-        : '/login',
+    initialRoute: authToken != null ? '/checkAccount' : '/splash',
   ));
 }
 
