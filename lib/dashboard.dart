@@ -1,81 +1,350 @@
-// dashboard.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:civicall/theme/app_theme.dart';
-import 'package:civicall/api_service.dart';
-import 'package:civicall/login.dart';
-import 'package:civicall/google_signin_service.dart';
+import 'package:civicall/drawerNavigation/drawerNavigation.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
 
-  Future<void> _logout(BuildContext context) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.redPink,
-            ),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
-    if (confirm != true) return;
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
 
-    final api = ApiService();
-    await api.logout();
-    await api.clearAuthToken();
-    await GoogleSignInService.signOut();
-    if (context.mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
-    }
+class _DashboardScreenState extends State<DashboardScreen> {
+  int _selectedIndex = 0;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  static const List<String> _pageTitles = [
+    'Home',
+    'Information',
+    'Forum',
+    'Notifications',
+  ];
+
+  final List<Widget> _pages = const [
+    _DummyPage(label: 'Home', icon: Icons.home_rounded),
+    _DummyPage(label: 'Information', icon: Icons.info_outline_rounded),
+    _DummyPage(label: 'Forum', icon: Icons.forum_outlined),
+    _DummyPage(label: 'Notifications', icon: Icons.notifications_outlined),
+  ];
+
+  int _navIndexToPageIndex(int navIndex) {
+    const map = {0: 0, 1: 1, 3: 2, 4: 3};
+    return map[navIndex] ?? 0;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.white,
-      appBar: AppBar(
-        title: const Text('Dashboard'),
-        backgroundColor: AppTheme.redPink,
-        foregroundColor: AppTheme.white,
-        elevation: 0,
-      ),
-      body: Center(
+  void _onTabTapped(int navIndex) {
+    if (navIndex == 2) {
+      _showAddSheet();
+      return;
+    }
+    setState(() => _selectedIndex = navIndex);
+  }
+
+  void _showAddSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: AppTheme.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(28),
+            topRight: Radius.circular(28),
+          ),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 36),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Welcome to Dashboard',
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.darkGray.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Quick Actions',
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: AppTheme.darkGray,
               ),
             ),
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => _logout(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.redPink,
-                foregroundColor: AppTheme.white,
-              ),
-              child: const Text('Logout'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildActionChip(
+                  icon: Icons.campaign_outlined,
+                  label: 'Report',
+                  color: AppTheme.redPink,
+                ),
+                _buildActionChip(
+                  icon: Icons.volunteer_activism_outlined,
+                  label: 'Volunteer',
+                  color: const Color(0xFF2E7D5E),
+                ),
+                _buildActionChip(
+                  icon: Icons.event_outlined,
+                  label: 'Event',
+                  color: const Color(0xFF1565C0),
+                ),
+                _buildActionChip(
+                  icon: Icons.post_add_outlined,
+                  label: 'Post',
+                  color: const Color(0xFF6A1B9A),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Container(
+          width: 58,
+          height: 58,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 26),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.darkGray.withOpacity(0.75),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pageIndex = _navIndexToPageIndex(_selectedIndex);
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: AppTheme.redPink,
+        statusBarIconBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        key: _scaffoldKey,
+        backgroundColor: const Color(0xFFF5F6FA),
+        drawer: const AppDrawer(),
+        appBar: AppBar(
+          backgroundColor: AppTheme.redPink,
+          foregroundColor: AppTheme.white,
+          elevation: 0,
+          centerTitle: true,
+          leading: IconButton(
+            icon: const Icon(Icons.menu_rounded, size: 26),
+            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+          ),
+          title: Text(
+            _pageTitles[pageIndex],
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.white,
+              letterSpacing: 0.2,
+            ),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.search_rounded, size: 24),
+              onPressed: () {},
             ),
           ],
         ),
+        body: IndexedStack(
+          index: pageIndex,
+          children: _pages,
+        ),
+        bottomNavigationBar: _buildBottomNav(),
+        floatingActionButton: _buildCenterFab(),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      ),
+    );
+  }
+
+  Widget _buildBottomNav() {
+    return BottomAppBar(
+      color: AppTheme.white,
+      elevation: 12,
+      shadowColor: AppTheme.darkGray.withOpacity(0.15),
+      notchMargin: 8,
+      shape: const CircularNotchedRectangle(),
+      padding: EdgeInsets.zero,
+      child: SizedBox(
+        height: 64,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildNavItem(
+              navIndex: 0,
+              icon: Icons.home_outlined,
+              activeIcon: Icons.home_rounded,
+              label: 'Home',
+            ),
+            _buildNavItem(
+              navIndex: 1,
+              icon: Icons.info_outline_rounded,
+              activeIcon: Icons.info_rounded,
+              label: 'Info',
+            ),
+            const SizedBox(width: 56),
+            _buildNavItem(
+              navIndex: 3,
+              icon: Icons.forum_outlined,
+              activeIcon: Icons.forum_rounded,
+              label: 'Forum',
+            ),
+            _buildNavItem(
+              navIndex: 4,
+              icon: Icons.notifications_outlined,
+              activeIcon: Icons.notifications_rounded,
+              label: 'Alerts',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem({
+    required int navIndex,
+    required IconData icon,
+    required IconData activeIcon,
+    required String label,
+  }) {
+    final bool isActive = _selectedIndex == navIndex;
+    return InkWell(
+      onTap: () => _onTabTapped(navIndex),
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        width: 64,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: Icon(
+                isActive ? activeIcon : icon,
+                key: ValueKey(isActive),
+                color: isActive
+                    ? AppTheme.redPink
+                    : AppTheme.darkGray.withOpacity(0.4),
+                size: 24,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
+                color: isActive
+                    ? AppTheme.redPink
+                    : AppTheme.darkGray.withOpacity(0.4),
+                letterSpacing: 0.1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCenterFab() {
+    return GestureDetector(
+      onTap: () => _showAddSheet(),
+      child: Container(
+        width: 58,
+        height: 58,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFE84757), AppTheme.redPink],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.redPink.withOpacity(0.4),
+              blurRadius: 14,
+              spreadRadius: 1,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.add_rounded,
+          color: AppTheme.white,
+          size: 30,
+        ),
+      ),
+    );
+  }
+}
+
+class _DummyPage extends StatelessWidget {
+  final String label;
+  final IconData icon;
+
+  const _DummyPage({required this.label, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: AppTheme.redPink.withOpacity(0.08),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon,
+                size: 38, color: AppTheme.redPink.withOpacity(0.6)),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.darkGray.withOpacity(0.4),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Coming soon',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppTheme.darkGray.withOpacity(0.3),
+            ),
+          ),
+        ],
       ),
     );
   }
