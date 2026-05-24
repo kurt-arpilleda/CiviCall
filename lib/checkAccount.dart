@@ -1,3 +1,4 @@
+import 'package:civicall/google_signin_service.dart';
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:civicall/theme/app_theme.dart';
@@ -22,6 +23,7 @@ class _CheckAccountScreenState extends State<CheckAccountScreen> {
     super.initState();
     _checkConnectivityAndAccount();
   }
+
   Future<void> _checkConnectivityAndAccount() async {
     final connectivityResult = await Connectivity().checkConnectivity();
     if (connectivityResult == ConnectivityResult.none) {
@@ -48,8 +50,10 @@ class _CheckAccountScreenState extends State<CheckAccountScreen> {
       } else {
         final message = response['message'] ?? '';
         if (message.contains('Invalid or expired token') ||
-            message.contains('No token')) {
+            message.contains('No token') ||
+            message == 'Session expired. Please login again.') {
           await _apiService.clearAuthToken();
+          await GoogleSignInService.signOut();
           if (mounted) {
             Navigator.pushReplacement(
               context,
