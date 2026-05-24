@@ -7,6 +7,7 @@ import 'package:civicall/firebase/firebase_service.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'signup.dart';
 import 'forgot_password_dialog.dart';
+import 'auto_update.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -44,6 +45,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       curve: Curves.easeOut,
     ));
     _animationController.forward();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AutoUpdate.checkForUpdate(context);
+    });
   }
 
   @override

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:civicall/theme/app_theme.dart';
 import 'package:civicall/drawerNavigation/drawerNavigation.dart';
+import 'package:civicall/auto_update.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -134,6 +135,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ],
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AutoUpdate.checkForUpdate(context);
+    });
   }
 
   @override
