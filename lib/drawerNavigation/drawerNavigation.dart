@@ -3,6 +3,7 @@ import 'package:civicall/theme/app_theme.dart';
 import 'package:civicall/api_service.dart';
 import 'package:civicall/login.dart';
 import 'package:civicall/google_signin_service.dart';
+import 'package:civicall/drawerNavigation/accountDetails.dart';
 
 class AppDrawer extends StatefulWidget {
   const AppDrawer({Key? key}) : super(key: key);
@@ -128,6 +129,22 @@ class _AppDrawerState extends State<AppDrawer> {
                 child: Column(
                   children: [
                     const SizedBox(height: 10),
+                    _buildNavItem(
+                      icon: Icons.person_outline_rounded,
+                      label: 'Account Details',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => AccountDetailsScreen(
+                              userData: _userData,
+                              onProfileUpdated: _loadUserData,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                     _buildNavItem(
                       icon: Icons.verified_user_outlined,
                       label: 'Account Verification',

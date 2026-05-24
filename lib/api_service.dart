@@ -85,6 +85,14 @@ class ApiService {
     });
   }
 
+  Future<Map<String, dynamic>> fetchDropdowns() async {
+    return _executeWithRetry(() async {
+      final uri = Uri.parse("${apiUrl}civicall_fetch_dropdowns.php");
+      final response = await httpClient.get(uri).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
+
   Future<Map<String, dynamic>> signUp({
     required String firstName,
     required String middleName,
@@ -201,6 +209,50 @@ class ApiService {
         uri,
         body: {'authToken': token},
       ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
+
+  Future<Map<String, dynamic>> updateUserProfile({
+    String? firstName,
+    String? middleName,
+    String? lastName,
+    String? address,
+    String? mobileNum,
+    String? emergencyNum,
+    int? campusId,
+    int? departmentId,
+    int? courseId,
+    int? userCategory,
+    String? birthDay,
+    int? gender,
+    int? nstpId,
+    String? srCode,
+    String? yrSection,
+  }) async {
+    return _executeWithRetry(() async {
+      final token = await getAuthToken();
+      if (token == null) {
+        return {"success": false, "message": "No token"};
+      }
+      final uri = Uri.parse("${apiUrl}civicall_update_user.php");
+      final Map<String, String> body = {'authToken': token};
+      if (firstName != null) body['firstName'] = firstName;
+      if (middleName != null) body['middleName'] = middleName;
+      if (lastName != null) body['lastName'] = lastName;
+      if (address != null) body['address'] = address;
+      if (mobileNum != null) body['mobileNum'] = mobileNum;
+      if (emergencyNum != null) body['emergencyNum'] = emergencyNum;
+      if (campusId != null) body['campusId'] = campusId.toString();
+      if (departmentId != null) body['departmentId'] = departmentId.toString();
+      if (courseId != null) body['courseId'] = courseId.toString();
+      if (userCategory != null) body['userCategory'] = userCategory.toString();
+      if (birthDay != null) body['birthDay'] = birthDay;
+      if (gender != null) body['gender'] = gender.toString();
+      if (nstpId != null) body['nstpId'] = nstpId.toString();
+      if (srCode != null) body['srCode'] = srCode;
+      if (yrSection != null) body['yrSection'] = yrSection;
+      final response = await httpClient.post(uri, body: body).timeout(requestTimeout);
       return _handleResponse(response);
     });
   }
