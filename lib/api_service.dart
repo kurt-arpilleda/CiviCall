@@ -1,4 +1,3 @@
-// api_service.dart (with new method)
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -124,6 +123,7 @@ class ApiService {
   Future<Map<String, dynamic>> login({
     required String email,
     required String password,
+    String? fcmToken,
   }) async {
     return _executeWithRetry(() async {
       final deviceId = await _getOrCreateDeviceId();
@@ -134,6 +134,7 @@ class ApiService {
           'email': email,
           'password': password,
           'deviceId': deviceId,
+          if (fcmToken != null) 'fcmToken': fcmToken,
         },
       ).timeout(requestTimeout);
       return _handleResponse(response);
@@ -149,6 +150,7 @@ class ApiService {
     String? birthDay,
     int? gender,
     String? mobileNum,
+    String? fcmToken,
   }) async {
     return _executeWithRetry(() async {
       final deviceId = await _getOrCreateDeviceId();
@@ -166,6 +168,7 @@ class ApiService {
           if (birthDay != null) 'birthDay': birthDay,
           if (gender != null) 'gender': gender.toString(),
           if (mobileNum != null) 'mobileNum': mobileNum,
+          if (fcmToken != null) 'fcmToken': fcmToken,
         },
       ).timeout(requestTimeout);
       return _handleResponse(response);

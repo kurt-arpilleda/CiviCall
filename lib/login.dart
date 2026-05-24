@@ -1,9 +1,9 @@
-// login.dart
 import 'package:flutter/material.dart';
 import 'package:civicall/theme/app_theme.dart';
 import 'package:civicall/api_service.dart';
 import 'package:civicall/checkAccount.dart';
 import 'package:civicall/google_signin_service.dart';
+import 'package:civicall/firebase/firebase_service.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'signup.dart';
 import 'forgot_password_dialog.dart';
@@ -69,9 +69,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     setState(() => _isLoading = true);
 
     final ApiService api = ApiService();
+    final String? fcmToken = await FirebaseService.getFCMToken();
     final result = await api.login(
       email: _emailController.text.trim(),
       password: _passwordController.text,
+      fcmToken: fcmToken,
     );
 
     if (!mounted) return;
@@ -125,6 +127,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       }
 
       final String? photoUrl = googleUser.photoUrl;
+      final String? fcmToken = await FirebaseService.getFCMToken();
 
       final ApiService api = ApiService();
       final result = await api.loginWithGoogle(
@@ -133,6 +136,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         firstName: firstName,
         lastName: lastName,
         photoUrl: photoUrl,
+        fcmToken: fcmToken,
       );
 
       if (!mounted) {

@@ -6,9 +6,12 @@ import 'login.dart';
 import 'checkAccount.dart';
 import 'theme/app_theme.dart';
 import 'api_service.dart';
+import 'firebase/firebase_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  ApiService.setupHttpOverrides();
+  await FirebaseService.initialize();
   final apiService = ApiService();
   final authToken = await apiService.getAuthToken();
 
