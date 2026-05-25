@@ -1,3 +1,4 @@
+// drawerNavigation.dart (updated)
 import 'package:flutter/material.dart';
 import 'package:civicall/theme/app_theme.dart';
 import 'package:civicall/api_service.dart';
@@ -57,6 +58,62 @@ class _AppDrawerState extends State<AppDrawer> {
       return NetworkImage(url);
     }
     return NetworkImage('${ApiService.apiUrl}profileImage/$url');
+  }
+
+  void _showFullScreenImage() {
+    final imageProvider = _resolveProfileImage();
+    if (imageProvider == null) return;
+
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        pageBuilder: (context, animation, secondaryAnimation) => Scaffold(
+          backgroundColor: Colors.black.withOpacity(0.95),
+          body: Stack(
+            children: [
+              Center(
+                child: InteractiveViewer(
+                  minScale: 0.8,
+                  maxScale: 4.0,
+                  child: Container(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width,
+                      maxHeight: MediaQuery.of(context).size.height * 0.8,
+                    ),
+                    child: Image(
+                      image: imageProvider,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 12,
+                right: 16,
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
   }
 
   Future<void> _confirmLogout(BuildContext context) async {
@@ -254,25 +311,28 @@ class _AppDrawerState extends State<AppDrawer> {
 
   Widget _buildAvatar() {
     final imageProvider = _resolveProfileImage();
-    return Container(
-      width: 70,
-      height: 70,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: AppTheme.white.withOpacity(0.5),
-          width: 2.5,
+    return GestureDetector(
+      onTap: imageProvider != null ? _showFullScreenImage : null,
+      child: Container(
+        width: 70,
+        height: 70,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: AppTheme.white.withOpacity(0.5),
+            width: 2.5,
+          ),
+          color: AppTheme.white.withOpacity(0.2),
         ),
-        color: AppTheme.white.withOpacity(0.2),
-      ),
-      child: ClipOval(
-        child: imageProvider != null
-            ? Image(
-          image: imageProvider,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _avatarFallback(),
-        )
-            : _avatarFallback(),
+        child: ClipOval(
+          child: imageProvider != null
+              ? Image(
+            image: imageProvider,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _avatarFallback(),
+          )
+              : _avatarFallback(),
+        ),
       ),
     );
   }

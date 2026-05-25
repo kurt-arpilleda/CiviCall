@@ -1,3 +1,4 @@
+// accountDetails.dart (updated)
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -147,9 +148,9 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
       final picker = ImagePicker();
       final picked = await picker.pickImage(
         source: source,
-        imageQuality: 85,
-        maxWidth: 800,
-        maxHeight: 800,
+        imageQuality: 100,
+        maxWidth: 1920,
+        maxHeight: 1920,
       );
       if (picked == null) return;
       final file = File(picked.path);
@@ -212,19 +213,17 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
           body: Stack(
             children: [
               Center(
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Hero(
-                    tag: 'profile_image',
-                    child: Container(
-                      constraints: BoxConstraints(
-                        maxWidth: MediaQuery.of(context).size.width,
-                        maxHeight: MediaQuery.of(context).size.height * 0.8,
-                      ),
-                      child: Image(
-                        image: imageProvider,
-                        fit: BoxFit.contain,
-                      ),
+                child: InteractiveViewer(
+                  minScale: 0.8,
+                  maxScale: 4.0,
+                  child: Container(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width,
+                      maxHeight: MediaQuery.of(context).size.height * 0.8,
+                    ),
+                    child: Image(
+                      image: imageProvider,
+                      fit: BoxFit.contain,
                     ),
                   ),
                 ),
@@ -539,13 +538,10 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                           ),
                         )
                             : imageProvider != null
-                            ? Hero(
-                          tag: 'profile_image',
-                          child: Image(
-                            image: imageProvider,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _avatarFallback(),
-                          ),
+                            ? Image(
+                          image: imageProvider,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _avatarFallback(),
                         )
                             : _avatarFallback(),
                       ),
