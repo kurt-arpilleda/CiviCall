@@ -4,6 +4,7 @@ import 'package:civicall/api_service.dart';
 import 'package:civicall/login.dart';
 import 'package:civicall/google_signin_service.dart';
 import 'package:civicall/drawerNavigation/accountDetails.dart';
+import 'package:civicall/anim/skeletonAnimation.dart';
 
 class AppDrawer extends StatefulWidget {
   const AppDrawer({Key? key}) : super(key: key);
@@ -24,6 +25,7 @@ class _AppDrawerState extends State<AppDrawer> {
   }
 
   Future<void> _loadUserData() async {
+    if (mounted) setState(() => _isLoading = true);
     final response = await _apiService.getUserData();
     if (mounted) {
       setState(() {
@@ -54,7 +56,6 @@ class _AppDrawerState extends State<AppDrawer> {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return NetworkImage(url);
     }
-    // Use ApiService.apiUrl as base for relative paths
     return NetworkImage('${ApiService.apiUrl}profileImage/$url');
   }
 
@@ -130,9 +131,9 @@ class _AppDrawerState extends State<AppDrawer> {
                     _buildNavItem(
                       icon: Icons.person_outline_rounded,
                       label: 'Account Details',
-                      onTap: () {
+                      onTap: () async {
                         Navigator.pop(context);
-                        Navigator.push(
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => AccountDetailsScreen(
@@ -141,6 +142,7 @@ class _AppDrawerState extends State<AppDrawer> {
                             ),
                           ),
                         );
+                        _loadUserData();
                       },
                     ),
                     _buildNavItem(
@@ -200,15 +202,7 @@ class _AppDrawerState extends State<AppDrawer> {
         bottom: 28,
       ),
       child: _isLoading
-          ? const SizedBox(
-        height: 80,
-        child: Center(
-          child: CircularProgressIndicator(
-            color: AppTheme.white,
-            strokeWidth: 2.5,
-          ),
-        ),
-      )
+          ? const DrawerHeaderSkeleton()
           : Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

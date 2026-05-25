@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:civicall/theme/app_theme.dart';
 import 'package:civicall/api_service.dart';
+import 'package:civicall/anim/skeletonAnimation.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 class AccountDetailsScreen extends StatefulWidget {
@@ -24,6 +27,8 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
   bool _isLoading = true;
   bool _isEditing = false;
   bool _isSaving = false;
+  bool _isUploadingPhoto = false;
+  File? _pendingImageFile;
 
   List<Map<String, dynamic>> _campuses = [];
   List<Map<String, dynamic>> _departments = [];
@@ -137,6 +142,224 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
     }
   }
 
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: source,
+        imageQuality: 85,
+        maxWidth: 800,
+        maxHeight: 800,
+      );
+      if (picked == null) return;
+      final file = File(picked.path);
+      setState(() {
+        _pendingImageFile = file;
+        _isUploadingPhoto = true;
+      });
+      await _uploadProfilePhoto(file);
+    } catch (e) {
+      if (mounted) {
+        Fluttertoast.showToast(
+          msg: 'Failed to pick image.',
+          backgroundColor: AppTheme.redPink,
+          textColor: Colors.white,
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadProfilePhoto(File file) async {
+    final result = await _apiService.uploadProfilePhoto(file);
+    if (!mounted) return;
+    if (result['success'] == true) {
+      final newFileName = result['photo_url']?.toString() ?? '';
+      setState(() {
+        _isUploadingPhoto = false;
+        _pendingImageFile = null;
+        if (_userData != null && newFileName.isNotEmpty) {
+          _userData!['photo_url'] = newFileName;
+        }
+      });
+      widget.onProfileUpdated?.call();
+      Fluttertoast.showToast(
+        msg: 'Profile photo updated.',
+        backgroundColor: Colors.green,
+        textColor: Colors.white,
+      );
+    } else {
+      setState(() {
+        _isUploadingPhoto = false;
+        _pendingImageFile = null;
+      });
+      Fluttertoast.showToast(
+        msg: result['message'] ?? 'Failed to upload photo.',
+        backgroundColor: AppTheme.redPink,
+        textColor: Colors.white,
+      );
+    }
+  }
+
+  void _showFullScreenImage() {
+    final imageProvider = _resolveProfileImage();
+    if (imageProvider == null) return;
+
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        pageBuilder: (context, animation, secondaryAnimation) => Scaffold(
+          backgroundColor: Colors.black.withOpacity(0.95),
+          body: Stack(
+            children: [
+              Center(
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Hero(
+                    tag: 'profile_image',
+                    child: Container(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width,
+                        maxHeight: MediaQuery.of(context).size.height * 0.8,
+                      ),
+                      child: Image(
+                        image: imageProvider,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 12,
+                right: 16,
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+
+  void _showImageSourceSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: AppTheme.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 36),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.darkGray.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Change Profile Photo',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.darkGray,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildSourceOption(
+                    icon: Icons.camera_alt_rounded,
+                    label: 'Camera',
+                    color: AppTheme.redPink,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickImage(ImageSource.camera);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildSourceOption(
+                    icon: Icons.photo_library_rounded,
+                    label: 'Gallery',
+                    color: const Color(0xFF1565C0),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickImage(ImageSource.gallery);
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSourceOption({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.18)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 32),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _saveChanges() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSaving = true);
@@ -193,6 +416,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
   }
 
   ImageProvider? _resolveProfileImage() {
+    if (_pendingImageFile != null) return FileImage(_pendingImageFile!);
     final raw = _userData?['photo_url'];
     if (raw == null) return null;
     final url = raw.toString().trim();
@@ -200,7 +424,6 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return NetworkImage(url);
     }
-    // Use ApiService.apiUrl as base for relative paths
     return NetworkImage('${ApiService.apiUrl}profileImage/$url');
   }
 
@@ -211,7 +434,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.redPink))
+          ? const AccountDetailsSkeleton()
           : CustomScrollView(
         slivers: [
           _buildSliverAppBar(context),
@@ -280,40 +503,99 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
           Stack(
             alignment: Alignment.bottomRight,
             children: [
-              Container(
-                width: 90,
-                height: 90,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppTheme.white.withOpacity(0.6), width: 3),
-                  color: AppTheme.white.withOpacity(0.2),
-                ),
-                child: ClipOval(
-                  child: imageProvider != null
-                      ? Image(
-                    image: imageProvider,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _avatarFallback(),
-                  )
-                      : _avatarFallback(),
+              GestureDetector(
+                onTap: _isEditing
+                    ? (_isUploadingPhoto ? null : _showImageSourceSheet)
+                    : (_isUploadingPhoto ? null : _showFullScreenImage),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      width: 90,
+                      height: 90,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: _isEditing
+                              ? AppTheme.white
+                              : AppTheme.white.withOpacity(0.6),
+                          width: _isEditing ? 3.5 : 3,
+                        ),
+                        color: AppTheme.white.withOpacity(0.2),
+                      ),
+                      child: ClipOval(
+                        child: _isUploadingPhoto
+                            ? Container(
+                          color: AppTheme.white.withOpacity(0.2),
+                          child: const Center(
+                            child: SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: CircularProgressIndicator(
+                                color: AppTheme.white,
+                                strokeWidth: 2.5,
+                              ),
+                            ),
+                          ),
+                        )
+                            : imageProvider != null
+                            ? Hero(
+                          tag: 'profile_image',
+                          child: Image(
+                            image: imageProvider,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _avatarFallback(),
+                          ),
+                        )
+                            : _avatarFallback(),
+                      ),
+                    ),
+                    if (_isEditing && !_isUploadingPhoto)
+                      Container(
+                        width: 90,
+                        height: 90,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.black.withOpacity(0.35),
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt_rounded,
+                          color: AppTheme.white,
+                          size: 26,
+                        ),
+                      ),
+                  ],
                 ),
               ),
-              Container(
-                width: 26,
-                height: 26,
-                decoration: BoxDecoration(
-                  color: _isVerified ? Colors.green.shade400 : Colors.grey.shade400,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppTheme.white, width: 2),
+              if (!_isEditing)
+                Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: _isVerified ? Colors.green.shade400 : Colors.grey.shade400,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppTheme.white, width: 2),
+                  ),
+                  child: Icon(
+                    _isVerified ? Icons.verified_rounded : Icons.close_rounded,
+                    size: 14,
+                    color: AppTheme.white,
+                  ),
                 ),
-                child: Icon(
-                  _isVerified ? Icons.verified_rounded : Icons.close_rounded,
-                  size: 14,
-                  color: AppTheme.white,
-                ),
-              ),
             ],
           ),
+          if (_isEditing && !_isUploadingPhoto)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                'Tap to change photo',
+                style: TextStyle(
+                  color: AppTheme.white.withOpacity(0.8),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
           const SizedBox(height: 10),
           Text(
             '${_userData?['firstName'] ?? ''} ${_userData?['lastName'] ?? ''}'.trim(),
@@ -377,13 +659,6 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
       color: AppTheme.white.withOpacity(0.2),
       child: const Icon(Icons.person_rounded, size: 44, color: AppTheme.white),
     );
-  }
-
-
-  T? _safeDropdownValue<T>(T? value, List<Map<String, dynamic>> items) {
-    if (value == null) return null;
-    final match = items.where((item) => item['id'] == value).toList();
-    return match.isNotEmpty ? value : null;
   }
 
   Widget _buildViewMode() {

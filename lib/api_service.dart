@@ -257,6 +257,59 @@ class ApiService {
     });
   }
 
+  Future<Map<String, dynamic>> uploadProfilePhoto(File imageFile) async {
+    try {
+      final token = await getAuthToken();
+      if (token == null) {
+        return {"success": false, "message": "No token"};
+      }
+      final uri = Uri.parse("${apiUrl}civicall_upload_photo.php");
+      final request = http.MultipartRequest('POST', uri);
+      request.fields['authToken'] = token;
+
+      final mimeType = _getMimeType(imageFile.path);
+      final mediaType = _parseMediaType(mimeType);
+
+      request.files.add(await http.MultipartFile.fromPath(
+        'photo',
+        imageFile.path,
+        contentType: mediaType,
+      ));
+
+      final streamedResponse = await request.send().timeout(requestTimeoutUploadImage);
+      final responseBody = await streamedResponse.stream.bytesToString();
+      print('Upload response: $responseBody');
+
+      try {
+        final decoded = jsonDecode(responseBody);
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        } else {
+          return {"success": false, "message": "Invalid server response"};
+        }
+      } catch (e) {
+        return {"success": false, "message": "Failed to parse server response: $responseBody"};
+      }
+    } catch (e) {
+      print('Upload exception: $e');
+      return {"success": false, "message": "Upload error: ${e.toString()}"};
+    }
+  }
+  String _getMimeType(String path) {
+    final lower = path.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    return 'image/jpeg';
+  }
+
+  http.MediaType? _parseMediaType(String mimeType) {
+    final parts = mimeType.split('/');
+    if (parts.length == 2) {
+      return http.MediaType(parts[0], parts[1]);
+    }
+    return null;
+  }
+
   Future<Map<String, dynamic>> sendPasswordResetEmail({
     required String emailOrPhone,
   }) async {
