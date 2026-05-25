@@ -49,9 +49,6 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
   int? _selectedGender;
   DateTime? _selectedBirthDay;
 
-  static const String _localImageBase =
-      'http://192.168.1.57/CiviCall/CiviCallAPI/profileImage/';
-
   @override
   void initState() {
     super.initState();
@@ -203,7 +200,8 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return NetworkImage(url);
     }
-    return NetworkImage('$_localImageBase$url');
+    // Use ApiService.apiUrl as base for relative paths
+    return NetworkImage('${ApiService.apiUrl}profileImage/$url');
   }
 
   bool get _isVerified => (_userData?['isVerified'] ?? 0) == 1;

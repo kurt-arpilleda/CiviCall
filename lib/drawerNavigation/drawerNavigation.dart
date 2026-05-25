@@ -17,9 +17,6 @@ class _AppDrawerState extends State<AppDrawer> {
   Map<String, dynamic>? _userData;
   bool _isLoading = true;
 
-  static const String _localImageBase =
-      'http://192.168.1.57/CiviCall/CiviCallAPI/profileImage/';
-
   @override
   void initState() {
     super.initState();
@@ -57,7 +54,8 @@ class _AppDrawerState extends State<AppDrawer> {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return NetworkImage(url);
     }
-    return NetworkImage('$_localImageBase$url');
+    // Use ApiService.apiUrl as base for relative paths
+    return NetworkImage('${ApiService.apiUrl}profileImage/$url');
   }
 
   Future<void> _confirmLogout(BuildContext context) async {
