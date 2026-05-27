@@ -107,11 +107,11 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen>
                     ),
                     _buildClickableContact(
                       icon: Icons.email_outlined,
-                      label: 'CivicallApp@gmail.com',
+                      label: 'appcivicall@gmail.com',
                       onTap: () async {
                         final uri = Uri(
                           scheme: 'mailto',
-                          path: 'CivicallApp@gmail.com',
+                          path: 'appcivicall@gmail.com',
                           queryParameters: {
                             'subject': 'Privacy Policy Inquiry - CiviCall App',
                           },
