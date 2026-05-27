@@ -6,6 +6,7 @@ import 'package:civicall/google_signin_service.dart';
 import 'package:civicall/drawerNavigation/accountDetails.dart';
 import 'package:civicall/drawerNavigation/userVerification.dart';
 import 'package:civicall/anim/skeletonAnimation.dart';
+import 'package:civicall/imageViewer.dart';
 
 class AppDrawer extends StatefulWidget {
   const AppDrawer({Key? key}) : super(key: key);
@@ -58,62 +59,6 @@ class _AppDrawerState extends State<AppDrawer> {
       return NetworkImage(url);
     }
     return NetworkImage('${ApiService.apiUrl}profileImage/$url');
-  }
-
-  void _showFullScreenImage() {
-    final imageProvider = _resolveProfileImage();
-    if (imageProvider == null) return;
-
-    Navigator.of(context).push(
-      PageRouteBuilder(
-        opaque: false,
-        pageBuilder: (context, animation, secondaryAnimation) => Scaffold(
-          backgroundColor: Colors.black.withOpacity(0.95),
-          body: Stack(
-            children: [
-              Center(
-                child: InteractiveViewer(
-                  minScale: 0.8,
-                  maxScale: 4.0,
-                  child: Container(
-                    constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width,
-                      maxHeight: MediaQuery.of(context).size.height * 0.8,
-                    ),
-                    child: Image(
-                      image: imageProvider,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: MediaQuery.of(context).padding.top + 12,
-                right: 16,
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.close,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-      ),
-    );
   }
 
   Future<void> _confirmLogout(BuildContext context) async {
@@ -318,7 +263,9 @@ class _AppDrawerState extends State<AppDrawer> {
   Widget _buildAvatar() {
     final imageProvider = _resolveProfileImage();
     return GestureDetector(
-      onTap: imageProvider != null ? _showFullScreenImage : null,
+      onTap: imageProvider != null
+          ? () => showFullScreenImage(context, imageProvider)
+          : null,
       child: Container(
         width: 70,
         height: 70,

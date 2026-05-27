@@ -6,6 +6,7 @@ import 'package:civicall/api_service.dart';
 import 'package:civicall/anim/skeletonAnimation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:civicall/imageViewer.dart';
 
 class AccountDetailsScreen extends StatefulWidget {
   final Map<String, dynamic>? userData;
@@ -198,62 +199,6 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
         textColor: Colors.white,
       );
     }
-  }
-
-  void _showFullScreenImage() {
-    final imageProvider = _resolveProfileImage();
-    if (imageProvider == null) return;
-
-    Navigator.of(context).push(
-      PageRouteBuilder(
-        opaque: false,
-        pageBuilder: (context, animation, secondaryAnimation) => Scaffold(
-          backgroundColor: Colors.black.withOpacity(0.95),
-          body: Stack(
-            children: [
-              Center(
-                child: InteractiveViewer(
-                  minScale: 0.8,
-                  maxScale: 4.0,
-                  child: Container(
-                    constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width,
-                      maxHeight: MediaQuery.of(context).size.height * 0.8,
-                    ),
-                    child: Image(
-                      image: imageProvider,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: MediaQuery.of(context).padding.top + 12,
-                right: 16,
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.close,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-      ),
-    );
   }
 
   void _showImageSourceSheet() {
@@ -504,7 +449,10 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
               GestureDetector(
                 onTap: _isEditing
                     ? (_isUploadingPhoto ? null : _showImageSourceSheet)
-                    : (_isUploadingPhoto ? null : _showFullScreenImage),
+                    : (_isUploadingPhoto ? null : () {
+                  final img = _resolveProfileImage();
+                  if (img != null) showFullScreenImage(context, img);
+                }),
                 child: Stack(
                   alignment: Alignment.center,
                   children: [

@@ -6,6 +6,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:civicall/imageViewer.dart';
 
 class UserVerificationScreen extends StatefulWidget {
   const UserVerificationScreen({Key? key}) : super(key: key);
@@ -243,12 +244,10 @@ class _UserVerificationScreenState extends State<UserVerificationScreen> {
     });
   }
 
-  /// Builds the URL for the uploaded verification file
   String _getVerificationFileUrl(String fileName) {
     return '${ApiService.apiUrl}fileVerification/$fileName';
   }
 
-  /// Opens the verification file (image preview or PDF in browser)
   Future<void> _previewVerificationFile(String fileName) async {
     final url = _getVerificationFileUrl(fileName);
     final lower = fileName.toLowerCase();
@@ -258,50 +257,8 @@ class _UserVerificationScreenState extends State<UserVerificationScreen> {
         lower.endsWith('.webp');
 
     if (isImage) {
-      showDialog(
-        context: context,
-        builder: (_) => Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.all(8),
-          child: Stack(
-            children: [
-              InteractiveViewer(
-                minScale: 0.5,
-                maxScale: 4.0,
-                child: Image.network(
-                  url,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => Container(
-                    height: 200,
-                    alignment: Alignment.center,
-                    child: const Text(
-                      'Failed to load image',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.close, color: Colors.white, size: 24),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+      showFullScreenImage(context, NetworkImage(url));
     } else {
-      // Open PDF or other file in browser
       if (await canLaunchUrl(Uri.parse(url))) {
         await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
       } else {
