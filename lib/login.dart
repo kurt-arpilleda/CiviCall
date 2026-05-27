@@ -321,6 +321,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           TextField(
             controller: _passwordController,
             obscureText: _obscurePassword,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) {
+              if (!_isLoading) {
+                _login();
+              }
+            },
             decoration: InputDecoration(
               hintText: '••••••••',
               prefixIcon: const Icon(Icons.lock_outline, size: 20),
