@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class UserVerificationScreen extends StatefulWidget {
   const UserVerificationScreen({Key? key}) : super(key: key);
@@ -242,6 +243,77 @@ class _UserVerificationScreenState extends State<UserVerificationScreen> {
     });
   }
 
+  /// Builds the URL for the uploaded verification file
+  String _getVerificationFileUrl(String fileName) {
+    return '${ApiService.apiUrl}fileVerification/$fileName';
+  }
+
+  /// Opens the verification file (image preview or PDF in browser)
+  Future<void> _previewVerificationFile(String fileName) async {
+    final url = _getVerificationFileUrl(fileName);
+    final lower = fileName.toLowerCase();
+    final isImage = lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.png') ||
+        lower.endsWith('.webp');
+
+    if (isImage) {
+      showDialog(
+        context: context,
+        builder: (_) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(8),
+          child: Stack(
+            children: [
+              InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: Image.network(
+                  url,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Container(
+                    height: 200,
+                    alignment: Alignment.center,
+                    child: const Text(
+                      'Failed to load image',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close, color: Colors.white, size: 24),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      // Open PDF or other file in browser
+      if (await canLaunchUrl(Uri.parse(url))) {
+        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      } else {
+        Fluttertoast.showToast(
+          msg: 'Could not open file',
+          backgroundColor: AppTheme.redPink,
+          textColor: Colors.white,
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -254,35 +326,42 @@ class _UserVerificationScreenState extends State<UserVerificationScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.redPink))
-          : SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            if (_isVerified) ...[
-              _buildVerifiedCard(),
-            ] else if (_verificationData != null) ...[
-              _buildPendingCard(),
-              const SizedBox(height: 20),
-              OutlinedButton.icon(
-                onPressed: _reUpload,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Submit New Document'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.redPink,
-                  side: const BorderSide(color: AppTheme.redPink),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+          : Container(
+        alignment: Alignment.center,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_isVerified) ...[
+                _buildVerifiedCard(),
+              ] else if (_verificationData != null) ...[
+                _buildPendingCard(),
+                const SizedBox(height: 20),
+                OutlinedButton.icon(
+                  onPressed: _reUpload,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Submit New Document'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.redPink,
+                    side: const BorderSide(color: AppTheme.redPink),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 14,
+                    ),
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-              ),
-            ] else ...[
-              _buildReminderCard(),
-              const SizedBox(height: 24),
-              _buildUploadForm(),
+              ] else ...[
+                _buildReminderCard(),
+                const SizedBox(height: 24),
+                _buildUploadForm(),
+              ],
             ],
-            const SizedBox(height: 40),
-          ],
+          ),
         ),
       ),
     );
@@ -297,6 +376,7 @@ class _UserVerificationScreenState extends State<UserVerificationScreen> {
         border: Border.all(color: Colors.green.shade200),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.verified_rounded, color: Colors.green.shade600, size: 64),
           const SizedBox(height: 12),
@@ -324,6 +404,7 @@ class _UserVerificationScreenState extends State<UserVerificationScreen> {
     final typeName = typeIndex >= 1 && typeIndex <= 4
         ? _fileTypes[typeIndex - 1]
         : 'Unknown';
+    final fileName = _verificationData?['fileName'] ?? '';
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -338,6 +419,7 @@ class _UserVerificationScreenState extends State<UserVerificationScreen> {
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(Icons.hourglass_empty_rounded, size: 48, color: AppTheme.redPink),
           const SizedBox(height: 12),
@@ -354,9 +436,34 @@ class _UserVerificationScreenState extends State<UserVerificationScreen> {
             'Document: $typeName',
             style: const TextStyle(fontSize: 14, color: AppTheme.darkGray),
           ),
-          Text(
-            'File: ${_verificationData?['fileName'] ?? ''}',
-            style: const TextStyle(fontSize: 13, color: AppTheme.darkGray),
+          const SizedBox(height: 4),
+          GestureDetector(
+            onTap: fileName.isNotEmpty ? () => _previewVerificationFile(fileName) : null,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              decoration: BoxDecoration(
+                color: AppTheme.redPink.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.preview, size: 16, color: AppTheme.redPink),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      fileName.isNotEmpty ? fileName : 'No file',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.redPink,
+                        decoration: TextDecoration.underline,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           const Text(
@@ -384,6 +491,7 @@ class _UserVerificationScreenState extends State<UserVerificationScreen> {
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -454,6 +562,7 @@ class _UserVerificationScreenState extends State<UserVerificationScreen> {
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
