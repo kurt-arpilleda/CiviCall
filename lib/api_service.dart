@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 class ApiService {
-  static const String apiUrl = "http://192.168.1.56/CiviCall/CiviCallAPI/";
+  static const String apiUrl = "http://192.168.1.57/CiviCall/CiviCallAPI/";
   static const Duration requestTimeout = Duration(seconds: 15);
   static const Duration requestTimeoutUploadImage = Duration(seconds: 45);
   static const int maxRetries = 3;
