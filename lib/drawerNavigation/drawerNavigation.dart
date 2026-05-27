@@ -7,6 +7,7 @@ import 'package:civicall/drawerNavigation/accountDetails.dart';
 import 'package:civicall/drawerNavigation/userVerification.dart';
 import 'package:civicall/anim/skeletonAnimation.dart';
 import 'package:civicall/imageViewer.dart';
+import 'package:civicall/drawerNavigation/feedBack.dart';
 
 class AppDrawer extends StatefulWidget {
   const AppDrawer({Key? key}) : super(key: key);
@@ -166,7 +167,13 @@ class _AppDrawerState extends State<AppDrawer> {
                     _buildNavItem(
                       icon: Icons.feedback_outlined,
                       label: 'Feedback',
-                      onTap: () => Navigator.pop(context),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const FeedBackScreen()),
+                        );
+                      },
                     ),
                     _buildNavItem(
                       icon: Icons.security_outlined,

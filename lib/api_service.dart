@@ -348,6 +348,43 @@ class ApiService {
       return {"success": false, "message": "Upload error: ${e.toString()}"};
     }
   }
+  Future<Map<String, dynamic>> getFeedback() async {
+    return _executeWithRetry(() async {
+      final token = await getAuthToken();
+      if (token == null) {
+        return {"success": false, "message": "No token"};
+      }
+      final uri = Uri.parse("${apiUrl}civicall_feedback.php");
+      final response = await httpClient.post(
+        uri,
+        body: {'authToken': token, 'action': 'get'},
+      ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
+
+  Future<Map<String, dynamic>> sendFeedback({
+    required double starNum,
+    required String feedback,
+  }) async {
+    return _executeWithRetry(() async {
+      final token = await getAuthToken();
+      if (token == null) {
+        return {"success": false, "message": "No token"};
+      }
+      final uri = Uri.parse("${apiUrl}civicall_feedback.php");
+      final response = await httpClient.post(
+        uri,
+        body: {
+          'authToken': token,
+          'action': 'send',
+          'starNum': starNum.toString(),
+          'feedBack': feedback,
+        },
+      ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
   String _getMimeType(String path) {
     final lower = path.toLowerCase();
     if (lower.endsWith('.png')) return 'image/png';
