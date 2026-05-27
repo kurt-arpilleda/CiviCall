@@ -295,6 +295,59 @@ class ApiService {
       return {"success": false, "message": "Upload error: ${e.toString()}"};
     }
   }
+  Future<Map<String, dynamic>> getVerificationStatus() async {
+    return _executeWithRetry(() async {
+      final token = await getAuthToken();
+      if (token == null) {
+        return {"success": false, "message": "No token"};
+      }
+      final uri = Uri.parse("${apiUrl}civicall_getVerification.php");
+      final response = await httpClient.post(
+        uri,
+        body: {'authToken': token},
+      ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
+
+  Future<Map<String, dynamic>> uploadVerification({
+    required File file,
+    required int fileType,
+  }) async {
+    try {
+      final token = await getAuthToken();
+      if (token == null) {
+        return {"success": false, "message": "No token"};
+      }
+      final uri = Uri.parse("${apiUrl}civicall_uploadVerification.php");
+      final request = http.MultipartRequest('POST', uri);
+      request.fields['authToken'] = token;
+      request.fields['fileType'] = fileType.toString();
+
+      final mimeType = _getMimeType(file.path);
+      final mediaType = _parseMediaType(mimeType);
+      request.files.add(await http.MultipartFile.fromPath(
+        'verificationFile',
+        file.path,
+        contentType: mediaType,
+      ));
+
+      final streamedResponse = await request.send().timeout(requestTimeoutUploadImage);
+      final responseBody = await streamedResponse.stream.bytesToString();
+      try {
+        final decoded = jsonDecode(responseBody);
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        } else {
+          return {"success": false, "message": "Invalid server response"};
+        }
+      } catch (e) {
+        return {"success": false, "message": "Failed to parse server response"};
+      }
+    } catch (e) {
+      return {"success": false, "message": "Upload error: ${e.toString()}"};
+    }
+  }
   String _getMimeType(String path) {
     final lower = path.toLowerCase();
     if (lower.endsWith('.png')) return 'image/png';

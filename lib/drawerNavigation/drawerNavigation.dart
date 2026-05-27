@@ -4,6 +4,7 @@ import 'package:civicall/api_service.dart';
 import 'package:civicall/login.dart';
 import 'package:civicall/google_signin_service.dart';
 import 'package:civicall/drawerNavigation/accountDetails.dart';
+import 'package:civicall/drawerNavigation/userVerification.dart';
 import 'package:civicall/anim/skeletonAnimation.dart';
 
 class AppDrawer extends StatefulWidget {
@@ -204,7 +205,13 @@ class _AppDrawerState extends State<AppDrawer> {
                     _buildNavItem(
                       icon: Icons.verified_user_outlined,
                       label: 'Account Verification',
-                      onTap: () => Navigator.pop(context),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const UserVerificationScreen()),
+                        );
+                      },
                     ),
                     _buildNavItem(
                       icon: Icons.calendar_month_outlined,
