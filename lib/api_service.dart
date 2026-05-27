@@ -412,7 +412,63 @@ class ApiService {
       return _handleResponse(response);
     });
   }
+  Future<Map<String, dynamic>> sendReport({
+    required String reportText,
+    required int reportType,
+    File? imageFile,
+  }) async {
+    try {
+      final token = await getAuthToken();
+      if (token == null) {
+        return {"success": false, "message": "No token"};
+      }
+      final uri = Uri.parse("${apiUrl}civicall_send_report.php");
+      final request = http.MultipartRequest('POST', uri);
+      request.fields['authToken'] = token;
+      request.fields['reportText'] = reportText;
+      request.fields['reportType'] = reportType.toString();
 
+      if (imageFile != null) {
+        final mimeType = _getMimeType(imageFile.path);
+        final mediaType = _parseMediaType(mimeType);
+        request.files.add(await http.MultipartFile.fromPath(
+          'reportImage',
+          imageFile.path,
+          contentType: mediaType,
+        ));
+      }
+
+      final streamedResponse = await request.send().timeout(requestTimeoutUploadImage);
+      final responseBody = await streamedResponse.stream.bytesToString();
+      try {
+        final decoded = jsonDecode(responseBody);
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        } else {
+          return {"success": false, "message": "Invalid server response"};
+        }
+      } catch (e) {
+        return {"success": false, "message": "Failed to parse server response"};
+      }
+    } catch (e) {
+      return {"success": false, "message": "Upload error: ${e.toString()}"};
+    }
+  }
+
+  Future<Map<String, dynamic>> getUserReports() async {
+    return _executeWithRetry(() async {
+      final token = await getAuthToken();
+      if (token == null) {
+        return {"success": false, "message": "No token"};
+      }
+      final uri = Uri.parse("${apiUrl}civicall_get_reports.php");
+      final response = await httpClient.post(
+        uri,
+        body: {'authToken': token},
+      ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
   Future<void> saveAuthToken(String token) async {
     await _secureStorage.write(key: 'authToken', value: token);
   }

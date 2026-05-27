@@ -1,3 +1,4 @@
+import 'package:civicall/drawerNavigation/reportProblem.dart';
 import 'package:civicall/longText/privacyPolicy.dart';
 import 'package:civicall/longText/termsConditions.dart';
 import 'package:civicall/longText/aboutUs.dart';
@@ -152,10 +153,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: 'Report Problems',
                 subtitle: 'Report bugs or issues',
                 onTap: () {
-                  Fluttertoast.showToast(
-                    msg: 'This feature will be available soon',
-                    backgroundColor: AppTheme.darkGray,
-                    textColor: Colors.white,
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ReportProblemScreen()),
                   );
                 },
               ),
