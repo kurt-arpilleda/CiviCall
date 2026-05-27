@@ -4,7 +4,8 @@ import 'package:civicall/api_service.dart';
 import 'package:civicall/theme/app_theme.dart';
 
 class ForgotPasswordDialog extends StatefulWidget {
-  const ForgotPasswordDialog({Key? key}) : super(key: key);
+  final String? initialEmailOrPhone;
+  const ForgotPasswordDialog({Key? key, this.initialEmailOrPhone}) : super(key: key);
 
   @override
   State<ForgotPasswordDialog> createState() => _ForgotPasswordDialogState();
@@ -15,6 +16,14 @@ class _ForgotPasswordDialogState extends State<ForgotPasswordDialog> {
   final _emailOrPhoneController = TextEditingController();
   final ApiService _apiService = ApiService();
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialEmailOrPhone != null && widget.initialEmailOrPhone!.isNotEmpty) {
+      _emailOrPhoneController.text = widget.initialEmailOrPhone!;
+    }
+  }
 
   @override
   void dispose() {

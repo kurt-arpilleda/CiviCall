@@ -1,3 +1,4 @@
+import 'package:civicall/drawerNavigation/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:civicall/theme/app_theme.dart';
 import 'package:civicall/api_service.dart';
@@ -178,7 +179,13 @@ class _AppDrawerState extends State<AppDrawer> {
                     _buildNavItem(
                       icon: Icons.security_outlined,
                       label: 'Settings and Privacy',
-                      onTap: () => Navigator.pop(context),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                        );
+                      },
                     ),
                     _buildNavItem(
                       icon: Icons.emoji_events_outlined,
