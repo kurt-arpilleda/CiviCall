@@ -26,7 +26,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
   final _confirmPasswordController = TextEditingController();
 
   int? _selectedCampusId;
-  String? _selectedUserCategory;
+  int? _selectedUserTypeId;
   String? _selectedGender;
   DateTime? _selectedDateOfBirth;
   bool _obscurePassword = true;
@@ -38,11 +38,12 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
-  final List<String> _userCategories = AppOptions.userCategories;
   final List<String> _genders = AppOptions.genders;
 
   List<Map<String, dynamic>> _campuses = [];
+  List<Map<String, dynamic>> _userTypes = [];
   bool _isLoadingCampuses = true;
+  bool _isLoadingUserTypes = true;
 
   @override
   void initState() {
@@ -64,6 +65,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
     ));
     _animationController.forward();
     _fetchCampuses();
+    _fetchUserTypes();
   }
 
   Future<void> _fetchCampuses() async {
@@ -81,6 +83,28 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Failed to load campuses'),
+          backgroundColor: AppTheme.redPink,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _fetchUserTypes() async {
+    final ApiService api = ApiService();
+    final result = await api.fetchDropdowns();
+    if (result['success'] == true && result['userTypes'] != null) {
+      setState(() {
+        _userTypes = List<Map<String, dynamic>>.from(result['userTypes']);
+        _isLoadingUserTypes = false;
+      });
+    } else {
+      setState(() {
+        _isLoadingUserTypes = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to load user types'),
           backgroundColor: AppTheme.redPink,
           behavior: SnackBarBehavior.floating,
         ),
@@ -171,7 +195,6 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
 
     setState(() => _isSubmitting = true);
 
-    final int userCategoryValue = _selectedUserCategory == 'Student' ? 0 : 1;
     final int genderValue = _selectedGender == 'Male' ? 0 : 1;
     final String birthDayFormatted =
         '${_selectedDateOfBirth!.year}-${_selectedDateOfBirth!.month.toString().padLeft(2, '0')}-${_selectedDateOfBirth!.day.toString().padLeft(2, '0')}';
@@ -184,7 +207,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
       address: _addressController.text.trim(),
       mobileNum: _mobileController.text.trim(),
       campusId: _selectedCampusId!,
-      userCategory: userCategoryValue,
+      userTypeId: _selectedUserTypeId!,
       birthDay: birthDayFormatted,
       gender: genderValue,
       email: _emailController.text.trim(),
@@ -312,14 +335,12 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                                 const SizedBox(height: 18),
                                 _buildLabel('User Category'),
                                 const SizedBox(height: 8),
-                                _buildDropdown(
-                                  value: _selectedUserCategory,
-                                  hint: 'Select category',
-                                  icon: Icons.badge_outlined,
-                                  items: _userCategories,
-                                  onChanged: (v) => setState(() => _selectedUserCategory = v),
-                                  validator: (v) => v == null ? 'Please select a user category' : null,
-                                ),
+                                _isLoadingUserTypes
+                                    ? const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  child: Center(child: CircularProgressIndicator()),
+                                )
+                                    : _buildUserTypeDropdown(),
                               ]),
                               const SizedBox(height: 16),
                               _buildSectionCard([
@@ -598,6 +619,30 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
       }).toList(),
       onChanged: (value) => setState(() => _selectedCampusId = value),
       validator: (value) => value == null ? 'Please select a campus' : null,
+    );
+  }
+
+  Widget _buildUserTypeDropdown() {
+    return DropdownButtonFormField<int>(
+      value: _selectedUserTypeId,
+      isExpanded: true,
+      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.darkGray),
+      decoration: const InputDecoration(
+        hintText: 'Select category',
+        prefixIcon: Icon(Icons.badge_outlined, size: 20),
+      ),
+      items: _userTypes.map((type) {
+        return DropdownMenuItem<int>(
+          value: type['id'] as int,
+          child: Text(
+            type['name'] as String,
+            style: const TextStyle(fontSize: 14, color: AppTheme.darkGray),
+            overflow: TextOverflow.ellipsis,
+          ),
+        );
+      }).toList(),
+      onChanged: (value) => setState(() => _selectedUserTypeId = value),
+      validator: (value) => value == null ? 'Please select a user category' : null,
     );
   }
 

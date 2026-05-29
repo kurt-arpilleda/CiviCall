@@ -35,6 +35,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
   List<Map<String, dynamic>> _departments = [];
   List<Map<String, dynamic>> _courses = [];
   List<Map<String, dynamic>> _nstpList = [];
+  List<Map<String, dynamic>> _userTypes = [];
 
   final _formKey = GlobalKey<FormState>();
 
@@ -51,7 +52,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
   int? _selectedDepartmentId;
   int? _selectedCourseId;
   int? _selectedNstpId;
-  int? _selectedUserCategory;
+  int? _selectedUserTypeId;
   int? _selectedGender;
   DateTime? _selectedBirthDay;
 
@@ -103,6 +104,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
         _departments = List<Map<String, dynamic>>.from(dropRes['departments'] ?? []);
         _courses = List<Map<String, dynamic>>.from(dropRes['courses'] ?? []);
         _nstpList = List<Map<String, dynamic>>.from(dropRes['nstp'] ?? []);
+        _userTypes = List<Map<String, dynamic>>.from(dropRes['userTypes'] ?? []);
       }
 
       if (userRes['success'] == true) {
@@ -132,8 +134,8 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
     _selectedCourseId = (_courses.any((c) => c['id'] == rawCourse)) ? rawCourse : null;
     final rawNstp = u['nstpId'] != null ? (u['nstpId'] as num).toInt() : null;
     _selectedNstpId = (_nstpList.any((n) => n['id'] == rawNstp)) ? rawNstp : null;
-    final rawCategory = u['userCategory'] != null ? (u['userCategory'] as num).toInt() : null;
-    _selectedUserCategory = (rawCategory == 0 || rawCategory == 1) ? rawCategory : null;
+    final rawUserType = u['userType'] != null ? (u['userType'] as num).toInt() : null;
+    _selectedUserTypeId = (_userTypes.any((t) => t['id'] == rawUserType)) ? rawUserType : null;
     final rawGender = u['gender'] != null ? (u['gender'] as num).toInt() : null;
     _selectedGender = (rawGender == 0 || rawGender == 1) ? rawGender : null;
     if (u['birthDay'] != null && u['birthDay'].toString().isNotEmpty) {
@@ -317,7 +319,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
       campusId: _selectedCampusId,
       departmentId: _selectedDepartmentId,
       courseId: _selectedCourseId,
-      userCategory: _selectedUserCategory,
+      userTypeId: _selectedUserTypeId,
       birthDay: _selectedBirthDay != null
           ? DateFormat('yyyy-MM-dd').format(_selectedBirthDay!)
           : null,
@@ -634,13 +636,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
             _buildInfoTile(Icons.school_outlined, 'Campus', u['campusName']),
             _buildInfoTile(Icons.domain_outlined, 'Department', u['departmentName']),
             _buildInfoTile(Icons.book_outlined, 'Course', u['courseName']),
-            _buildInfoTile(
-              Icons.category_outlined,
-              'Category',
-              u['userCategory'] != null
-                  ? (u['userCategory'].toString() == '0' ? 'Student' : 'Alumni')
-                  : null,
-            ),
+            _buildInfoTile(Icons.category_outlined, 'Category', u['userTypeName']),
             _buildInfoTile(Icons.badge_outlined, 'SR-Code', u['srCode']),
             _buildInfoTile(Icons.group_outlined, 'Year & Section', u['yrSection']),
             _buildInfoTile(Icons.military_tech_outlined, 'NSTP', u['nstpType']),
@@ -838,12 +834,14 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
               _buildDropdownField<int>(
                 label: 'Category',
                 icon: Icons.category_outlined,
-                value: _selectedUserCategory,
-                items: const [
-                  DropdownMenuItem(value: 0, child: Text('Student')),
-                  DropdownMenuItem(value: 1, child: Text('Alumni')),
-                ],
-                onChanged: (v) => setState(() => _selectedUserCategory = v),
+                value: _selectedUserTypeId,
+                items: _userTypes
+                    .map((t) => DropdownMenuItem<int>(
+                  value: t['id'] as int,
+                  child: Text(t['name'].toString()),
+                ))
+                    .toList(),
+                onChanged: (v) => setState(() => _selectedUserTypeId = v),
               ),
               _buildTextField(
                 controller: _srCodeCtrl,

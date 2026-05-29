@@ -100,7 +100,7 @@ class ApiService {
     required String address,
     required String mobileNum,
     required int campusId,
-    required int userCategory,
+    required int userTypeId,
     required String birthDay,
     required int gender,
     required String email,
@@ -117,7 +117,7 @@ class ApiService {
           'address': address,
           'mobileNum': mobileNum,
           'campusId': campusId.toString(),
-          'userCategory': userCategory.toString(),
+          'userTypeId': userTypeId.toString(),
           'birthDay': birthDay,
           'gender': gender.toString(),
           'email': email,
@@ -223,7 +223,7 @@ class ApiService {
     int? campusId,
     int? departmentId,
     int? courseId,
-    int? userCategory,
+    int? userTypeId,
     String? birthDay,
     int? gender,
     int? nstpId,
@@ -246,7 +246,7 @@ class ApiService {
       if (campusId != null) body['campusId'] = campusId.toString();
       if (departmentId != null) body['departmentId'] = departmentId.toString();
       if (courseId != null) body['courseId'] = courseId.toString();
-      if (userCategory != null) body['userCategory'] = userCategory.toString();
+      if (userTypeId != null) body['userTypeId'] = userTypeId.toString();
       if (birthDay != null) body['birthDay'] = birthDay;
       if (gender != null) body['gender'] = gender.toString();
       if (nstpId != null) body['nstpId'] = nstpId.toString();
