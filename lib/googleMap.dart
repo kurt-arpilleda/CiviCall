@@ -24,6 +24,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
   Set<Marker> _markers = {};
   bool _isLoadingLocation = false;
   bool _mapReady = false;
+  MapType _mapType = MapType.normal;
 
   static const LatLng _calabarzonCenter = LatLng(14.1007, 121.0794);
   static const double _calabarzonZoom = 9.0;
@@ -48,6 +49,12 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
           infoWindow: const InfoWindow(title: 'Selected Location'),
         ),
       };
+    });
+  }
+
+  void _toggleMapType() {
+    setState(() {
+      _mapType = _mapType == MapType.normal ? MapType.satellite : MapType.normal;
     });
   }
 
@@ -218,7 +225,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
           myLocationEnabled: false,
           myLocationButtonEnabled: false,
           zoomControlsEnabled: false,
-          mapType: MapType.normal,
+          mapType: _mapType,
         ),
         Positioned(
           right: 12,
@@ -247,6 +254,26 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
               _mapButton(
                 icon: const Icon(Icons.remove_rounded, color: AppTheme.darkGray, size: 22),
                 onTap: () => _controller?.animateCamera(CameraUpdate.zoomOut()),
+              ),
+              const SizedBox(height: 8),
+              _mapButton(
+                icon: const Icon(Icons.explore_rounded, color: AppTheme.redPink, size: 20),
+                onTap: () {
+                  _controller?.animateCamera(
+                    CameraUpdate.newCameraPosition(
+                      const CameraPosition(target: _calabarzonCenter, zoom: _calabarzonZoom),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+              _mapButton(
+                icon: Icon(
+                  _mapType == MapType.normal ? Icons.satellite_alt : Icons.map,
+                  color: AppTheme.redPink,
+                  size: 20,
+                ),
+                onTap: _toggleMapType,
               ),
             ],
           ),
@@ -351,7 +378,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
   }
 }
 
-class LocationViewDialog extends StatelessWidget {
+class LocationViewDialog extends StatefulWidget {
   final double lat;
   final double lng;
 
@@ -362,8 +389,21 @@ class LocationViewDialog extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<LocationViewDialog> createState() => _LocationViewDialogState();
+}
+
+class _LocationViewDialogState extends State<LocationViewDialog> {
+  MapType _mapType = MapType.normal;
+
+  void _toggleMapType() {
+    setState(() {
+      _mapType = _mapType == MapType.normal ? MapType.satellite : MapType.normal;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final LatLng location = LatLng(lat, lng);
+    final LatLng location = LatLng(widget.lat, widget.lng);
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(16),
@@ -435,7 +475,7 @@ class LocationViewDialog extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Lat: ${lat.toStringAsFixed(6)}, Lng: ${lng.toStringAsFixed(6)}',
+                        'Lat: ${widget.lat.toStringAsFixed(6)}, Lng: ${widget.lng.toStringAsFixed(6)}',
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppTheme.darkGray,
@@ -447,23 +487,56 @@ class LocationViewDialog extends StatelessWidget {
                 ),
               ),
               Expanded(
-                child: GoogleMap(
-                  initialCameraPosition: CameraPosition(
-                    target: location,
-                    zoom: 15.0,
-                  ),
-                  markers: {
-                    Marker(
-                      markerId: const MarkerId('view_only_location'),
-                      position: location,
-                      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-                      infoWindow: const InfoWindow(title: 'Selected Location'),
+                child: Stack(
+                  children: [
+                    GoogleMap(
+                      initialCameraPosition: CameraPosition(
+                        target: location,
+                        zoom: 15.0,
+                      ),
+                      markers: {
+                        Marker(
+                          markerId: const MarkerId('view_only_location'),
+                          position: location,
+                          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+                          infoWindow: const InfoWindow(title: 'Selected Location'),
+                        ),
+                      },
+                      myLocationEnabled: false,
+                      myLocationButtonEnabled: false,
+                      zoomControlsEnabled: true,
+                      mapType: _mapType,
                     ),
-                  },
-                  myLocationEnabled: false,
-                  myLocationButtonEnabled: false,
-                  zoomControlsEnabled: true,
-                  mapType: MapType.normal,
+                    Positioned(
+                      right: 12,
+                      bottom: 12,
+                      child: GestureDetector(
+                        onTap: _toggleMapType,
+                        child: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.15),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Icon(
+                              _mapType == MapType.normal ? Icons.satellite_alt : Icons.map,
+                              color: AppTheme.redPink,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Container(
