@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:civicall/theme/app_theme.dart';
 
 class LocationPickerDialog extends StatefulWidget {
@@ -376,6 +377,15 @@ class _LocationViewDialogState extends State<LocationViewDialog> {
     });
   }
 
+  Future<void> _openInGoogleMaps() async {
+    final Uri url = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=${widget.lat},${widget.lng}&travelmode=driving',
+    );
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final LatLng location = LatLng(widget.lat, widget.lng);
@@ -384,7 +394,7 @@ class _LocationViewDialogState extends State<LocationViewDialog> {
       insetPadding: const EdgeInsets.all(16),
       child: Container(
         width: double.infinity,
-        height: MediaQuery.of(context).size.height * 0.6,
+        height: MediaQuery.of(context).size.height * 0.65,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
@@ -401,7 +411,7 @@ class _LocationViewDialogState extends State<LocationViewDialog> {
           child: Column(
             children: [
               Container(
-                padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
+                padding: const EdgeInsets.fromLTRB(20, 16, 8, 16),
                 decoration: const BoxDecoration(color: AppTheme.redPink),
                 child: Row(
                   children: [
@@ -428,11 +438,16 @@ class _LocationViewDialogState extends State<LocationViewDialog> {
                             ),
                           ),
                           Text(
-                            'Tap the map to view coordinates',
+                            'Tap directions to navigate there',
                             style: TextStyle(color: Colors.white70, fontSize: 12),
                           ),
                         ],
                       ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.open_in_new_rounded, color: Colors.white, size: 20),
+                      tooltip: 'Open in Google Maps',
+                      onPressed: _openInGoogleMaps,
                     ),
                     IconButton(
                       icon: const Icon(Icons.close_rounded, color: Colors.white),
@@ -506,22 +521,37 @@ class _LocationViewDialogState extends State<LocationViewDialog> {
                     ),
                   ],
                 ),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.redPink,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      elevation: 0,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close_rounded, size: 16),
+                        label: const Text('Close', style: TextStyle(fontWeight: FontWeight.w600)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.darkGray,
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          side: BorderSide(color: AppTheme.darkGray.withOpacity(0.3)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
                     ),
-                    child: const Text(
-                      'Close',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _openInGoogleMaps,
+                        icon: const Icon(Icons.directions_rounded, size: 16),
+                        label: const Text('Directions', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1A73E8),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          elevation: 0,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ],
