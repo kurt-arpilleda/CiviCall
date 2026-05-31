@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:civicall/theme/app_theme.dart';
 import 'package:civicall/drawerNavigation/drawerNavigation.dart';
 import 'package:civicall/auto_update.dart';
+import 'package:civicall/drawerNavigation/reportProblem.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -83,21 +84,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   icon: Icons.campaign_outlined,
                   label: 'Report',
                   color: AppTheme.redPink,
+                  onTap: () {
+                    Navigator.pop(context); // close bottom sheet
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ReportProblemScreen()),
+                    );
+                  },
                 ),
                 _buildActionChip(
                   icon: Icons.volunteer_activism_outlined,
-                  label: 'Volunteer',
+                  label: 'Add Engagement',
                   color: const Color(0xFF2E7D5E),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // TODO: Add engagement navigation
+                  },
                 ),
                 _buildActionChip(
                   icon: Icons.event_outlined,
                   label: 'Event',
                   color: const Color(0xFF1565C0),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // TODO: Event navigation
+                  },
                 ),
                 _buildActionChip(
                   icon: Icons.post_add_outlined,
-                  label: 'Post',
+                  label: 'Post in Forum',
                   color: const Color(0xFF6A1B9A),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // TODO: Post in forum navigation
+                  },
                 ),
               ],
             ),
@@ -112,28 +132,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required IconData icon,
     required String label,
     required Color color,
+    required VoidCallback onTap,
   }) {
-    return Column(
-      children: [
-        Container(
-          width: 58,
-          height: 58,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            shape: BoxShape.circle,
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 26),
           ),
-          child: Icon(icon, color: color, size: 26),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.darkGray.withOpacity(0.75),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.darkGray.withOpacity(0.75),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
