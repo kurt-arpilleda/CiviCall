@@ -117,7 +117,6 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
           child: Column(
             children: [
               _buildHeader(),
-              _buildInfoBar(),
               Expanded(child: _buildMap()),
               _buildFooter(),
             ],
@@ -165,30 +164,6 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
           IconButton(
             icon: const Icon(Icons.close_rounded, color: Colors.white),
             onPressed: () => Navigator.pop(context),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      color: const Color(0xFFF8F9FA),
-      child: Row(
-        children: [
-          const Icon(Icons.my_location_rounded, size: 16, color: AppTheme.redPink),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Lat: ${_selectedLocation.latitude.toStringAsFixed(6)}, '
-                  'Lng: ${_selectedLocation.longitude.toStringAsFixed(6)}',
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppTheme.darkGray,
-                fontFamily: 'monospace',
-              ),
-            ),
           ),
         ],
       ),
@@ -462,26 +437,6 @@ class _LocationViewDialogState extends State<LocationViewDialog> {
                     IconButton(
                       icon: const Icon(Icons.close_rounded, color: Colors.white),
                       onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                color: const Color(0xFFF8F9FA),
-                child: Row(
-                  children: [
-                    const Icon(Icons.my_location_rounded, size: 16, color: AppTheme.redPink),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Lat: ${widget.lat.toStringAsFixed(6)}, Lng: ${widget.lng.toStringAsFixed(6)}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.darkGray,
-                          fontFamily: 'monospace',
-                        ),
-                      ),
                     ),
                   ],
                 ),
