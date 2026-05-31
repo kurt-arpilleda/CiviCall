@@ -551,6 +551,24 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
     );
   }
 
+  void _showPhotoPreview() {
+    if (_pickedImage != null) {
+      showFullScreenImage(context, FileImage(_pickedImage!));
+    }
+  }
+
+  void _showLocationPreview() {
+    if (_latitude != null && _longitude != null) {
+      showDialog(
+        context: context,
+        builder: (_) => LocationViewDialog(
+          lat: _latitude!,
+          lng: _longitude!,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -1634,7 +1652,10 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
 
   Widget _buildReviewRow(_ReviewItem item) {
     final isEmpty = item.value.trim().isEmpty || item.value == '—';
-    return Padding(
+    final bool canTap = (item.label == 'Photo' && _pickedImage != null) ||
+        (item.label == 'Coordinates' && _latitude != null && _longitude != null);
+
+    Widget rowContent = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1673,22 +1694,56 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
             ),
           ),
           Expanded(
-            child: Text(
-              isEmpty ? '—' : item.value,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: isEmpty ? AppTheme.darkGray.withOpacity(0.28) : AppTheme.darkGray,
-              ),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    isEmpty ? '—' : item.value,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isEmpty ? AppTheme.darkGray.withOpacity(0.28) : AppTheme.darkGray,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (canTap)
+                  Container(
+                    margin: const EdgeInsets.only(left: 8),
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.redPink.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(
+                      Icons.open_in_new_rounded,
+                      size: 12,
+                      color: AppTheme.redPink,
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
       ),
     );
-  }
 
+    if (canTap) {
+      return InkWell(
+        onTap: () {
+          if (item.label == 'Photo') {
+            _showPhotoPreview();
+          } else if (item.label == 'Coordinates') {
+            _showLocationPreview();
+          }
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: rowContent,
+      );
+    }
+    return rowContent;
+  }
   Widget _buildBottomNav() {
     final isLastPage = _currentPage == _totalPages - 1;
     return Container(
