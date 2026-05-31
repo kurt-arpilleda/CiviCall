@@ -1,3 +1,4 @@
+import 'package:civicall/addDrawer/addEngagement.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:civicall/theme/app_theme.dart';
@@ -85,7 +86,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   label: 'Report',
                   color: AppTheme.redPink,
                   onTap: () {
-                    Navigator.pop(context); // close bottom sheet
+                    Navigator.pop(context);
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const ReportProblemScreen()),
@@ -98,7 +99,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   color: const Color(0xFF2E7D5E),
                   onTap: () {
                     Navigator.pop(context);
-                    // TODO: Add engagement navigation
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const AddEngagementScreen()));
                   },
                 ),
                 _buildActionChip(
@@ -220,14 +221,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildBottomNav() {
     return BottomAppBar(
-      color: AppTheme.white,
+      color: AppTheme.darkGray,
       elevation: 12,
-      shadowColor: AppTheme.darkGray.withOpacity(0.15),
+      shadowColor: Colors.black.withOpacity(0.3),
       notchMargin: 8,
       shape: const CircularNotchedRectangle(),
       padding: EdgeInsets.zero,
       child: SizedBox(
-        height: 64,
+        height: 56,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
@@ -272,10 +273,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return InkWell(
       onTap: () => _onTabTapped(navIndex),
       borderRadius: BorderRadius.circular(12),
+      splashColor: AppTheme.white.withOpacity(0.08),
+      highlightColor: AppTheme.white.withOpacity(0.05),
       child: SizedBox(
         width: 64,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
@@ -284,7 +288,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 key: ValueKey(isActive),
                 color: isActive
                     ? AppTheme.redPink
-                    : AppTheme.darkGray.withOpacity(0.4),
+                    : AppTheme.white.withOpacity(0.6),
                 size: 24,
               ),
             ),
@@ -296,7 +300,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
                 color: isActive
                     ? AppTheme.redPink
-                    : AppTheme.darkGray.withOpacity(0.4),
+                    : AppTheme.white.withOpacity(0.6),
                 letterSpacing: 0.1,
               ),
             ),
