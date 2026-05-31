@@ -1,0 +1,1180 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:civicall/theme/app_theme.dart';
+import 'package:civicall/api_service.dart';
+import 'package:civicall/imageViewer.dart';
+import 'package:civicall/googleMap.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+
+class EngagementDetailsScreen extends StatefulWidget {
+  final Map<String, dynamic> engagement;
+  final int? currentUserId;
+  final VoidCallback? onUpdated;
+
+  const EngagementDetailsScreen({
+    Key? key,
+    required this.engagement,
+    required this.currentUserId,
+    this.onUpdated,
+  }) : super(key: key);
+
+  @override
+  State<EngagementDetailsScreen> createState() => _EngagementDetailsScreenState();
+}
+
+class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
+  final ApiService _apiService = ApiService();
+  late Map<String, dynamic> _engagement;
+  bool _isEditing = false;
+  bool _isSaving = false;
+
+  File? _newImage;
+  List<Map<String, dynamic>> _categories = [];
+  List<Map<String, dynamic>> _campuses = [];
+
+  int? _editCategoryId;
+  String? _editCategoryName;
+  Set<int> _editCampusIds = {};
+
+  final _titleCtrl = TextEditingController();
+  final _descCtrl = TextEditingController();
+  final _objectiveCtrl = TextEditingController();
+  final _instructionCtrl = TextEditingController();
+  final _locationCtrl = TextEditingController();
+  final _targetCtrl = TextEditingController();
+  final _pointsCtrl = TextEditingController();
+  final _facilitatorCtrl = TextEditingController();
+  final _facilitatorContactCtrl = TextEditingController();
+
+  double? _editLat;
+  double? _editLng;
+  DateTime? _editStart;
+  DateTime? _editEnd;
+
+  @override
+  void initState() {
+    super.initState();
+    _engagement = Map<String, dynamic>.from(widget.engagement);
+    _loadDropdowns();
+  }
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _descCtrl.dispose();
+    _objectiveCtrl.dispose();
+    _instructionCtrl.dispose();
+    _locationCtrl.dispose();
+    _targetCtrl.dispose();
+    _pointsCtrl.dispose();
+    _facilitatorCtrl.dispose();
+    _facilitatorContactCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadDropdowns() async {
+    final catRes = await _apiService.fetchEngagementCategories();
+    final campRes = await _apiService.fetchCampus();
+    if (mounted) {
+      setState(() {
+        if (catRes['success'] == true) {
+          _categories = List<Map<String, dynamic>>.from(catRes['categories'] ?? []);
+        }
+        if (campRes['success'] == true) {
+          _campuses = List<Map<String, dynamic>>.from(campRes['campuses'] ?? []);
+        }
+      });
+    }
+  }
+
+  void _enterEditMode() {
+    _titleCtrl.text = _engagement['titleEngagement'] ?? '';
+    _descCtrl.text = _engagement['description'] ?? '';
+    _objectiveCtrl.text = _engagement['objective'] ?? '';
+    _instructionCtrl.text = _engagement['instruction'] ?? '';
+    _locationCtrl.text = _engagement['locationAddress'] ?? '';
+    _targetCtrl.text = (_engagement['targetParty'] ?? 0).toString();
+    _pointsCtrl.text = (_engagement['activityPoints'] ?? 0).toString();
+    _facilitatorCtrl.text = _engagement['facilitatorName'] ?? '';
+    _facilitatorContactCtrl.text = _engagement['facilitatorContact'] ?? '';
+    _editLat = _engagement['latitude'] as double?;
+    _editLng = _engagement['longitude'] as double?;
+    _editCategoryId = _engagement['categoryId'] as int?;
+    _editCategoryName = _engagement['categoryName'] as String?;
+    _newImage = null;
+
+    final campusStr = _engagement['campus'] as String? ?? '';
+    _editCampusIds = campusStr.split(',').where((s) => s.isNotEmpty).map((s) => int.tryParse(s) ?? 0).where((i) => i > 0).toSet();
+
+    final startStr = _engagement['startSchedule'] as String?;
+    final endStr = _engagement['endSchedule'] as String?;
+    try { _editStart = startStr != null && startStr.isNotEmpty ? DateTime.parse(startStr) : null; } catch (_) {}
+    try { _editEnd = endStr != null && endStr.isNotEmpty ? DateTime.parse(endStr) : null; } catch (_) {}
+
+    setState(() => _isEditing = true);
+  }
+
+  void _cancelEdit() {
+    setState(() {
+      _isEditing = false;
+      _newImage = null;
+    });
+  }
+
+  Future<void> _saveEdit() async {
+    if (_titleCtrl.text.trim().isEmpty) {
+      _showSnack('Title is required.', isError: true);
+      return;
+    }
+    setState(() => _isSaving = true);
+
+    final startStr = _editStart != null ? DateFormat('yyyy-MM-dd HH:mm:ss').format(_editStart!) : '';
+    final endStr = _editEnd != null ? DateFormat('yyyy-MM-dd HH:mm:ss').format(_editEnd!) : '';
+    final campusStr = _editCampusIds.join(',');
+
+    final res = await _apiService.updateEngagement(
+      engagementId: _engagement['engagementId'] as int,
+      categoryId: _editCategoryId ?? 0,
+      title: _titleCtrl.text.trim(),
+      description: _descCtrl.text.trim(),
+      objective: _objectiveCtrl.text.trim(),
+      instruction: _instructionCtrl.text.trim(),
+      locationAddress: _locationCtrl.text.trim(),
+      latitude: _editLat ?? 0.0,
+      longitude: _editLng ?? 0.0,
+      startSchedule: startStr,
+      endSchedule: endStr,
+      campus: campusStr,
+      targetParty: int.tryParse(_targetCtrl.text) ?? 0,
+      activityPoints: int.tryParse(_pointsCtrl.text) ?? 0,
+      facilitatorName: _facilitatorCtrl.text.trim(),
+      facilitatorContact: _facilitatorContactCtrl.text.trim(),
+      imageFile: _newImage,
+    );
+
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+
+    if (res['success'] == true) {
+      setState(() {
+        _engagement['titleEngagement'] = _titleCtrl.text.trim();
+        _engagement['description'] = _descCtrl.text.trim();
+        _engagement['objective'] = _objectiveCtrl.text.trim();
+        _engagement['instruction'] = _instructionCtrl.text.trim();
+        _engagement['locationAddress'] = _locationCtrl.text.trim();
+        _engagement['targetParty'] = int.tryParse(_targetCtrl.text) ?? 0;
+        _engagement['activityPoints'] = int.tryParse(_pointsCtrl.text) ?? 0;
+        _engagement['facilitatorName'] = _facilitatorCtrl.text.trim();
+        _engagement['facilitatorContact'] = _facilitatorContactCtrl.text.trim();
+        _engagement['latitude'] = _editLat ?? 0.0;
+        _engagement['longitude'] = _editLng ?? 0.0;
+        _engagement['startSchedule'] = startStr;
+        _engagement['endSchedule'] = endStr;
+        _engagement['campus'] = campusStr;
+        _engagement['categoryId'] = _editCategoryId ?? _engagement['categoryId'];
+        _engagement['categoryName'] = _editCategoryName ?? _engagement['categoryName'];
+        if (res['engagementImage'] != null) {
+          _engagement['engagementImage'] = res['engagementImage'];
+        }
+        _isEditing = false;
+        _newImage = null;
+      });
+      _showSnack('Engagement updated successfully!');
+      widget.onUpdated?.call();
+    } else {
+      _showSnack(res['message'] ?? 'Update failed.', isError: true);
+    }
+  }
+
+  void _showSnack(String msg, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline_rounded : Icons.check_circle_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: Text(msg, style: const TextStyle(fontWeight: FontWeight.w600))),
+          ],
+        ),
+        backgroundColor: isError ? AppTheme.redPink : const Color(0xFF2E7D5E),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  String _formatDate(String? raw) {
+    if (raw == null || raw.isEmpty) return '—';
+    try {
+      return DateFormat('MMMM d, yyyy hh:mm a').format(DateTime.parse(raw));
+    } catch (_) {
+      return raw;
+    }
+  }
+
+  Future<void> _pickDateTime(bool isStart) async {
+    final now = DateTime.now();
+    final init = isStart ? (_editStart ?? now) : (_editEnd ?? _editStart ?? now);
+    final date = await showDatePicker(
+      context: context,
+      initialDate: init,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(now.year + 5),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(colorScheme: const ColorScheme.light(primary: AppTheme.redPink)),
+        child: child!,
+      ),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(init),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(colorScheme: const ColorScheme.light(primary: AppTheme.redPink)),
+        child: child!,
+      ),
+    );
+    if (time == null || !mounted) return;
+    final combined = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    setState(() {
+      if (isStart) {
+        _editStart = combined;
+        if (_editEnd != null && _editEnd!.isBefore(combined)) _editEnd = null;
+      } else {
+        _editEnd = combined;
+      }
+    });
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: source, imageQuality: 80);
+    if (picked != null && mounted) setState(() => _newImage = File(picked.path));
+  }
+
+  void _showImageSourceSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(28),
+            topRight: Radius.circular(28),
+          ),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 36),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.darkGray.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text('Change Photo', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.darkGray)),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(child: _imageSourceBtn(Icons.camera_alt_rounded, 'Camera', AppTheme.redPink, () { Navigator.pop(context); _pickImage(ImageSource.camera); })),
+                const SizedBox(width: 12),
+                Expanded(child: _imageSourceBtn(Icons.photo_library_rounded, 'Gallery', const Color(0xFF1565C0), () { Navigator.pop(context); _pickImage(ImageSource.gallery); })),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _imageSourceBtn(IconData icon, String label, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.07),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.18)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 26),
+            const SizedBox(height: 8),
+            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 13)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showCategoryPicker() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.5,
+        maxChildSize: 0.85,
+        minChildSize: 0.3,
+        builder: (ctx, scrollCtrl) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(topLeft: Radius.circular(28), topRight: Radius.circular(28)),
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                child: Column(
+                  children: [
+                    Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.darkGray.withOpacity(0.15), borderRadius: BorderRadius.circular(2))),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Container(width: 36, height: 36, decoration: BoxDecoration(color: AppTheme.redPink.withOpacity(0.1), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.category_outlined, color: AppTheme.redPink, size: 18)),
+                        const SizedBox(width: 12),
+                        const Text('Select Category', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.darkGray)),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Divider(color: AppTheme.darkGray.withOpacity(0.08)),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  controller: scrollCtrl,
+                  itemCount: _categories.length,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  itemBuilder: (_, i) {
+                    final cat = _categories[i];
+                    final id = cat['categoryId'] as int;
+                    final name = cat['categoryName'] as String;
+                    final isSelected = _editCategoryId == id;
+                    return Container(
+                      margin: const EdgeInsets.symmetric(vertical: 3),
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppTheme.redPink.withOpacity(0.05) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        border: isSelected ? Border.all(color: AppTheme.redPink.withOpacity(0.25)) : null,
+                      ),
+                      child: ListTile(
+                        onTap: () { setState(() { _editCategoryId = id; _editCategoryName = name; }); Navigator.pop(context); },
+                        leading: Container(width: 38, height: 38, decoration: BoxDecoration(color: isSelected ? AppTheme.redPink.withOpacity(0.12) : AppTheme.darkGray.withOpacity(0.06), borderRadius: BorderRadius.circular(10)), child: Icon(Icons.volunteer_activism_outlined, color: isSelected ? AppTheme.redPink : AppTheme.darkGray.withOpacity(0.45), size: 19)),
+                        title: Text(name, style: TextStyle(fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500, color: isSelected ? AppTheme.redPink : AppTheme.darkGray, fontSize: 14)),
+                        trailing: isSelected ? const Icon(Icons.check_circle_rounded, color: AppTheme.redPink, size: 20) : null,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showCampusPicker() {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        Set<int> tempSelected = Set.from(_editCampusIds);
+        return StatefulBuilder(
+          builder: (ctx, setS) => Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+            child: Container(
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 30, offset: const Offset(0, 10))]),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 12, 18),
+                    decoration: const BoxDecoration(color: AppTheme.redPink, borderRadius: BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24))),
+                    child: Row(
+                      children: [
+                        Container(width: 36, height: 36, decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.school_rounded, color: Colors.white, size: 18)),
+                        const SizedBox(width: 12),
+                        const Expanded(child: Text('Target Campus', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700))),
+                        IconButton(icon: const Icon(Icons.close, color: Colors.white, size: 20), onPressed: () => Navigator.pop(ctx)),
+                      ],
+                    ),
+                  ),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _campuses.length,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemBuilder: (_, i) {
+                        final campus = _campuses[i];
+                        final id = campus['campusId'] as int;
+                        final name = campus['campusName'] as String;
+                        return CheckboxListTile(
+                          value: tempSelected.contains(id),
+                          onChanged: (val) { setS(() { if (val == true) { tempSelected.add(id); } else { tempSelected.remove(id); } }); },
+                          title: Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.darkGray)),
+                          activeColor: AppTheme.redPink,
+                          controlAffinity: ListTileControlAffinity.leading,
+                        );
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    child: ElevatedButton(
+                      onPressed: () { setState(() => _editCampusIds = tempSelected); Navigator.pop(ctx); },
+                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.redPink, foregroundColor: Colors.white, minimumSize: const Size(double.infinity, 48), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), elevation: 0),
+                      child: const Text('Confirm', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isVerified = (_engagement['verificationStatus'] as int? ?? 0) == 1;
+    final bool isOwner = (_engagement['uploaderId'] as int?) == widget.currentUserId;
+    final bool canEdit = isOwner && !isVerified;
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF4F5F9),
+        body: CustomScrollView(
+          slivers: [
+            _buildSliverAppBar(isVerified, canEdit),
+            SliverToBoxAdapter(
+              child: _isEditing
+                  ? _buildEditForm()
+                  : _buildDetailsView(isVerified, isOwner),
+            ),
+          ],
+        ),
+        bottomNavigationBar: _isEditing ? _buildEditBottomBar() : null,
+      ),
+    );
+  }
+
+  Widget _buildSliverAppBar(bool isVerified, bool canEdit) {
+    final String? imageFile = _engagement['engagementImage'] as String?;
+    final String imageUrl = (imageFile != null && imageFile.isNotEmpty)
+        ? '${ApiService.apiUrl}civicall_add_engagement.php/../engagementImage/$imageFile'
+        : '';
+    final bool hasImage = imageUrl.isNotEmpty;
+
+    return SliverAppBar(
+      expandedHeight: 280,
+      pinned: true,
+      stretch: true,
+      backgroundColor: AppTheme.redPink,
+      foregroundColor: Colors.white,
+      leading: IconButton(
+        icon: Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(color: Colors.black.withOpacity(0.3), shape: BoxShape.circle),
+          child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
+        ),
+        onPressed: () => Navigator.pop(context),
+      ),
+      actions: [
+        if (canEdit && !_isEditing)
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(color: Colors.black.withOpacity(0.3), shape: BoxShape.circle),
+                child: const Icon(Icons.edit_rounded, color: Colors.white, size: 20),
+              ),
+              onPressed: _enterEditMode,
+            ),
+          ),
+      ],
+      flexibleSpace: FlexibleSpaceBar(
+        stretchModes: const [StretchMode.zoomBackground],
+        background: Stack(
+          fit: StackFit.expand,
+          children: [
+            _isEditing && _newImage != null
+                ? Image.file(_newImage!, fit: BoxFit.cover)
+                : hasImage
+                ? GestureDetector(
+              onTap: () => showFullScreenImage(context, NetworkImage(imageUrl)),
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _imagePlaceholderBg(),
+              ),
+            )
+                : _imagePlaceholderBg(),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.transparent, Colors.black.withOpacity(0.55)],
+                  stops: const [0.4, 1.0],
+                ),
+              ),
+            ),
+            if (_isEditing)
+              Positioned(
+                bottom: 16,
+                right: 16,
+                child: GestureDetector(
+                  onTap: _showImageSourceSheet,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.redPink,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3))],
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.camera_alt_rounded, color: Colors.white, size: 15),
+                        SizedBox(width: 6),
+                        Text('Change Photo', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            if (!_isEditing)
+              Positioned(
+                bottom: 16,
+                left: 16,
+                child: _buildStatusChip((_engagement['verificationStatus'] as int? ?? 0) == 1),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _imagePlaceholderBg() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppTheme.redPink, AppTheme.redPink.withOpacity(0.7)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Center(
+        child: Icon(Icons.volunteer_activism_outlined, color: Colors.white.withOpacity(0.3), size: 72),
+      ),
+    );
+  }
+
+  Widget _buildStatusChip(bool isVerified) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: isVerified ? const Color(0xFF2E7D5E) : const Color(0xFFE65100),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 8, offset: const Offset(0, 3))],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(isVerified ? Icons.verified_rounded : Icons.pending_rounded, color: Colors.white, size: 14),
+          const SizedBox(width: 5),
+          Text(isVerified ? 'Verified' : 'Pending Verification', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailsView(bool isVerified, bool isOwner) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildCategoryAndTitle(),
+          const SizedBox(height: 20),
+          _buildInfoCard(Icons.schedule_rounded, 'Schedule', [
+            _buildDetailRow(Icons.play_circle_outline_rounded, 'Start', _formatDate(_engagement['startSchedule'] as String?), const Color(0xFF2E7D5E)),
+            const SizedBox(height: 8),
+            _buildDetailRow(Icons.stop_circle_outlined, 'End', _formatDate(_engagement['endSchedule'] as String?), const Color(0xFF6A1B9A)),
+          ]),
+          const SizedBox(height: 12),
+          _buildLocationCard(),
+          const SizedBox(height: 12),
+          if ((_engagement['description'] as String? ?? '').isNotEmpty)
+            _buildTextCard(Icons.description_outlined, 'Description', _engagement['description'] ?? ''),
+          if ((_engagement['objective'] as String? ?? '').isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _buildTextCard(Icons.flag_outlined, 'Objective', _engagement['objective'] ?? ''),
+          ],
+          if ((_engagement['instruction'] as String? ?? '').isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _buildTextCard(Icons.list_alt_outlined, 'Instructions', _engagement['instruction'] ?? ''),
+          ],
+          const SizedBox(height: 12),
+          _buildInfoCard(Icons.people_outline_rounded, 'Participation Details', [
+            _buildDetailRow(Icons.group_outlined, 'Target Participants', '${_engagement['targetParty'] ?? 0}', AppTheme.darkGray),
+            const SizedBox(height: 8),
+            _buildDetailRow(Icons.star_outline_rounded, 'Activity Points', '${_engagement['activityPoints'] ?? 0}', const Color(0xFFF57C00)),
+          ]),
+          const SizedBox(height: 12),
+          _buildInfoCard(Icons.person_outline_rounded, 'Facilitator', [
+            _buildDetailRow(Icons.badge_outlined, 'Name', _engagement['facilitatorName'] ?? '—', AppTheme.darkGray),
+            const SizedBox(height: 8),
+            _buildDetailRow(Icons.phone_outlined, 'Contact', _engagement['facilitatorContact'] ?? '—', const Color(0xFF1565C0)),
+          ]),
+          const SizedBox(height: 12),
+          _buildCampusCard(),
+          if (!isVerified && isOwner) ...[
+            const SizedBox(height: 16),
+            _buildOwnerNotice(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryAndTitle() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppTheme.redPink.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppTheme.redPink.withOpacity(0.2)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.category_outlined, color: AppTheme.redPink, size: 12),
+                  const SizedBox(width: 4),
+                  Text(
+                    _engagement['categoryName'] as String? ?? 'General',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.redPink),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Text(
+          _engagement['titleEngagement'] ?? '',
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppTheme.darkGray, height: 1.25),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoCard(IconData icon, String title, List<Widget> children) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 14, offset: const Offset(0, 4))],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 32, height: 32,
+                  decoration: BoxDecoration(color: AppTheme.redPink.withOpacity(0.1), borderRadius: BorderRadius.circular(9)),
+                  child: Icon(icon, color: AppTheme.redPink, size: 17),
+                ),
+                const SizedBox(width: 10),
+                Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.darkGray)),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Divider(height: 1, color: AppTheme.darkGray.withOpacity(0.07)),
+            const SizedBox(height: 12),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value, Color color) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 28, height: 28,
+          decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(8)),
+          child: Icon(icon, size: 14, color: color),
+        ),
+        const SizedBox(width: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.darkGray.withOpacity(0.45))),
+            const SizedBox(height: 2),
+            Text(value, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppTheme.darkGray)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTextCard(IconData icon, String title, String content) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 14, offset: const Offset(0, 4))],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(width: 32, height: 32, decoration: BoxDecoration(color: AppTheme.redPink.withOpacity(0.1), borderRadius: BorderRadius.circular(9)), child: Icon(icon, color: AppTheme.redPink, size: 17)),
+                const SizedBox(width: 10),
+                Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.darkGray)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(content, style: TextStyle(fontSize: 14, color: AppTheme.darkGray.withOpacity(0.75), height: 1.55)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLocationCard() {
+    final double lat = (_engagement['latitude'] as num?)?.toDouble() ?? 0.0;
+    final double lng = (_engagement['longitude'] as num?)?.toDouble() ?? 0.0;
+    final bool hasCoords = lat != 0.0 || lng != 0.0;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 14, offset: const Offset(0, 4))],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(width: 32, height: 32, decoration: BoxDecoration(color: const Color(0xFF1565C0).withOpacity(0.1), borderRadius: BorderRadius.circular(9)), child: const Icon(Icons.location_on_outlined, color: Color(0xFF1565C0), size: 17)),
+                const SizedBox(width: 10),
+                const Text('Location', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.darkGray)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _engagement['locationAddress'] as String? ?? '—',
+              style: TextStyle(fontSize: 14, color: AppTheme.darkGray.withOpacity(0.75), height: 1.45),
+            ),
+            if (hasCoords) ...[
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: () => showDialog(context: context, builder: (_) => LocationViewDialog(lat: lat, lng: lng)),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Color(0xFF1565C0), Color(0xFF1976D2)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [BoxShadow(color: const Color(0xFF1565C0).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3))],
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.map_rounded, color: Colors.white, size: 16),
+                      SizedBox(width: 7),
+                      Text('View on Map', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCampusCard() {
+    final String campusStr = _engagement['campus'] as String? ?? '';
+    final List<String> campusIds = campusStr.split(',').where((s) => s.isNotEmpty).toList();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 14, offset: const Offset(0, 4))],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(width: 32, height: 32, decoration: BoxDecoration(color: AppTheme.redPink.withOpacity(0.1), borderRadius: BorderRadius.circular(9)), child: const Icon(Icons.school_rounded, color: AppTheme.redPink, size: 17)),
+                const SizedBox(width: 10),
+                const Text('Target Campuses', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.darkGray)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: campusIds.isEmpty
+                  ? [Text('—', style: TextStyle(color: AppTheme.darkGray.withOpacity(0.5)))]
+                  : campusIds.map((id) {
+                final campus = _campuses.firstWhere((c) => c['campusId'].toString() == id, orElse: () => {'campusName': 'Campus $id'});
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppTheme.redPink.withOpacity(0.07),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppTheme.redPink.withOpacity(0.18)),
+                  ),
+                  child: Text(campus['campusName'] as String, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.redPink)),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOwnerNotice() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3E0),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFFB74D).withOpacity(0.5)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline_rounded, color: Color(0xFFE65100), size: 18),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'This engagement is pending admin verification. It is only visible to you until approved.',
+              style: TextStyle(fontSize: 12.5, color: Color(0xFFE65100), fontWeight: FontWeight.w600, height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEditForm() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 120),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildEditSectionHeader(Icons.edit_note_rounded, 'Edit Engagement', 'Make changes below'),
+          const SizedBox(height: 20),
+          _buildEditCard('Basic Info', Icons.info_outline_rounded, [
+            _editDropdownTile('Category', _editCategoryName ?? 'Select Category', Icons.category_outlined, _showCategoryPicker),
+            const SizedBox(height: 14),
+            _editField('Title', _titleCtrl, Icons.title_rounded, maxLines: 1),
+            const SizedBox(height: 14),
+            _editField('Description', _descCtrl, Icons.description_outlined, maxLines: 4),
+            const SizedBox(height: 14),
+            _editField('Objective', _objectiveCtrl, Icons.flag_outlined, maxLines: 3),
+            const SizedBox(height: 14),
+            _editField('Instructions', _instructionCtrl, Icons.list_alt_outlined, maxLines: 3),
+          ]),
+          const SizedBox(height: 14),
+          _buildEditCard('Schedule', Icons.schedule_rounded, [
+            _editDateTile('Start Date & Time', _editStart, () => _pickDateTime(true), const Color(0xFF2E7D5E)),
+            const SizedBox(height: 12),
+            _editDateTile('End Date & Time', _editEnd, () => _pickDateTime(false), const Color(0xFF6A1B9A)),
+          ]),
+          const SizedBox(height: 14),
+          _buildEditCard('Location', Icons.location_on_outlined, [
+            _editField('Address', _locationCtrl, Icons.location_on_outlined, maxLines: 2),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () async {
+                final result = await showDialog<LatLng>(
+                  context: context,
+                  builder: (_) => LocationPickerDialog(initialLat: _editLat, initialLng: _editLng),
+                );
+                if (result != null) setState(() { _editLat = result.latitude; _editLng = result.longitude; });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1565C0).withOpacity(0.07),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF1565C0).withOpacity(0.2)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.map_rounded, color: Color(0xFF1565C0), size: 18),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Pin Location', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1565C0))),
+                          Text(
+                            _editLat != null && _editLng != null ? '${_editLat!.toStringAsFixed(5)}, ${_editLng!.toStringAsFixed(5)}' : 'Tap to select on map',
+                            style: TextStyle(fontSize: 11.5, color: const Color(0xFF1565C0).withOpacity(0.7)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right_rounded, color: Color(0xFF1565C0), size: 18),
+                  ],
+                ),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 14),
+          _buildEditCard('Participation', Icons.people_outline_rounded, [
+            _editField('Target Participants', _targetCtrl, Icons.group_outlined, keyboardType: TextInputType.number, maxLines: 1),
+            const SizedBox(height: 14),
+            _editField('Activity Points', _pointsCtrl, Icons.star_outline_rounded, keyboardType: TextInputType.number, maxLines: 1),
+          ]),
+          const SizedBox(height: 14),
+          _buildEditCard('Facilitator', Icons.person_outline_rounded, [
+            _editField('Facilitator Name', _facilitatorCtrl, Icons.badge_outlined, maxLines: 1),
+            const SizedBox(height: 14),
+            _editField('Contact Number', _facilitatorContactCtrl, Icons.phone_outlined, keyboardType: TextInputType.phone, maxLines: 1),
+          ]),
+          const SizedBox(height: 14),
+          _buildEditCard('Target Campus', Icons.school_rounded, [
+            _editDropdownTile(
+              'Campuses',
+              _editCampusIds.isEmpty ? 'Select campuses' : '${_editCampusIds.length} campus(es) selected',
+              Icons.school_outlined,
+              _showCampusPicker,
+            ),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEditSectionHeader(IconData icon, String title, String subtitle) {
+    return Row(
+      children: [
+        Container(
+          width: 44, height: 44,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: [Color(0xFFE84757), AppTheme.redPink], begin: Alignment.topLeft, end: Alignment.bottomRight),
+            borderRadius: BorderRadius.circular(13),
+            boxShadow: [BoxShadow(color: AppTheme.redPink.withOpacity(0.35), blurRadius: 10, offset: const Offset(0, 4))],
+          ),
+          child: Icon(icon, color: Colors.white, size: 22),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppTheme.darkGray)),
+            Text(subtitle, style: TextStyle(fontSize: 12, color: AppTheme.darkGray.withOpacity(0.45))),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEditCard(String title, IconData icon, List<Widget> children) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 14, offset: const Offset(0, 4))],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(width: 30, height: 30, decoration: BoxDecoration(color: AppTheme.redPink.withOpacity(0.1), borderRadius: BorderRadius.circular(9)), child: Icon(icon, color: AppTheme.redPink, size: 16)),
+                const SizedBox(width: 10),
+                Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.darkGray)),
+              ],
+            ),
+            const SizedBox(height: 14),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _editField(String label, TextEditingController ctrl, IconData icon, {int maxLines = 1, TextInputType keyboardType = TextInputType.text}) {
+    return TextFormField(
+      controller: ctrl,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      style: const TextStyle(fontSize: 14, color: AppTheme.darkGray, fontFamily: 'Lato'),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(fontSize: 13, color: AppTheme.darkGray.withOpacity(0.5), fontFamily: 'Lato'),
+        prefixIcon: Icon(icon, size: 18, color: AppTheme.darkGray.withOpacity(0.4)),
+        filled: true,
+        fillColor: const Color(0xFFF8F9FC),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppTheme.darkGray.withOpacity(0.12))),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppTheme.darkGray.withOpacity(0.12))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.redPink, width: 1.5)),
+      ),
+    );
+  }
+
+  Widget _editDropdownTile(String label, String value, IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8F9FC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.darkGray.withOpacity(0.12)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: AppTheme.darkGray.withOpacity(0.4)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: TextStyle(fontSize: 11, color: AppTheme.darkGray.withOpacity(0.5))),
+                  Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.darkGray)),
+                ],
+              ),
+            ),
+            Icon(Icons.expand_more_rounded, color: AppTheme.darkGray.withOpacity(0.4), size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _editDateTile(String label, DateTime? dateTime, VoidCallback onTap, Color color) {
+    final String display = dateTime != null ? DateFormat('MMMM d, yyyy hh:mm a').format(dateTime) : 'Tap to select';
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.18)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.calendar_today_outlined, size: 18, color: color),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: TextStyle(fontSize: 11, color: color.withOpacity(0.7))),
+                  Text(display, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: dateTime != null ? AppTheme.darkGray : AppTheme.darkGray.withOpacity(0.4))),
+                ],
+              ),
+            ),
+            Icon(Icons.edit_calendar_rounded, color: color.withOpacity(0.5), size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEditBottomBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 20, offset: const Offset(0, -4))],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _isSaving ? null : _cancelEdit,
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                side: BorderSide(color: AppTheme.darkGray.withOpacity(0.2)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: const Text('Cancel', style: TextStyle(color: AppTheme.darkGray, fontWeight: FontWeight.w600, fontSize: 14)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 2,
+            child: ElevatedButton(
+              onPressed: _isSaving ? null : _saveEdit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.redPink,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: AppTheme.redPink.withOpacity(0.5),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                elevation: 0,
+              ),
+              child: _isSaving
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.save_rounded, size: 18),
+                  SizedBox(width: 8),
+                  Text('Save Changes', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

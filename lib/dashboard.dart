@@ -5,6 +5,7 @@ import 'package:civicall/theme/app_theme.dart';
 import 'package:civicall/drawerNavigation/drawerNavigation.dart';
 import 'package:civicall/auto_update.dart';
 import 'package:civicall/drawerNavigation/reportProblem.dart';
+import 'package:civicall/homePage/engagementPost.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -25,7 +26,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   ];
 
   final List<Widget> _pages = const [
-    _DummyPage(label: 'Home', icon: Icons.home_rounded),
+    EngagementFeedScreen(),
     _DummyPage(label: 'Information', icon: Icons.info_outline_rounded),
     _DummyPage(label: 'Forum', icon: Icons.forum_outlined),
     _DummyPage(label: 'Notifications', icon: Icons.notifications_outlined),

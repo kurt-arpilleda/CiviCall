@@ -528,6 +528,71 @@ class ApiService {
       return _handleStreamResponse(streamed, body);
     });
   }
+  Future<Map<String, dynamic>> fetchEngagements() async {
+    return _executeWithRetry(() async {
+      final token = await _secureStorage.read(key: 'authToken') ?? '';
+      final uri = Uri.parse("${apiUrl}civicall_fetch_engagements.php");
+      final response = await httpClient.post(
+        uri,
+        body: {'authToken': token},
+      ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
+
+  Future<Map<String, dynamic>> updateEngagement({
+    required int engagementId,
+    required int categoryId,
+    required String title,
+    required String description,
+    required String objective,
+    required String instruction,
+    required String locationAddress,
+    required double latitude,
+    required double longitude,
+    required String startSchedule,
+    required String endSchedule,
+    required String campus,
+    required int targetParty,
+    required int activityPoints,
+    required String facilitatorName,
+    required String facilitatorContact,
+    File? imageFile,
+  }) async {
+    return _executeWithRetry(() async {
+      final token = await _secureStorage.read(key: 'authToken') ?? '';
+      final uri = Uri.parse("${apiUrl}civicall_update_engagement.php");
+
+      final request = http.MultipartRequest('POST', uri);
+      request.fields['authToken']          = token;
+      request.fields['engagementId']       = engagementId.toString();
+      request.fields['categoryId']         = categoryId.toString();
+      request.fields['title']              = title;
+      request.fields['description']        = description;
+      request.fields['objective']          = objective;
+      request.fields['instruction']        = instruction;
+      request.fields['locationAddress']    = locationAddress;
+      request.fields['latitude']           = latitude.toString();
+      request.fields['longitude']          = longitude.toString();
+      request.fields['startSchedule']      = startSchedule;
+      request.fields['endSchedule']        = endSchedule;
+      request.fields['campus']             = campus;
+      request.fields['targetParty']        = targetParty.toString();
+      request.fields['activityPoints']     = activityPoints.toString();
+      request.fields['facilitatorName']    = facilitatorName;
+      request.fields['facilitatorContact'] = facilitatorContact;
+
+      if (imageFile != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath('engagementImage', imageFile.path),
+        );
+      }
+
+      final streamed = await httpClient.send(request).timeout(requestTimeoutUploadImage);
+      final body = await streamed.stream.bytesToString();
+      return _handleStreamResponse(streamed, body);
+    });
+  }
   Future<void> saveAuthToken(String token) async {
     await _secureStorage.write(key: 'authToken', value: token);
   }
