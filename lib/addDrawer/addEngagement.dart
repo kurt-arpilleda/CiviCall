@@ -169,11 +169,11 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
+            topLeft: Radius.circular(28),
+            topRight: Radius.circular(28),
           ),
         ),
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 36),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -187,16 +187,22 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
             ),
             const SizedBox(height: 20),
             const Text(
-              'Add Photo',
+              'Upload Photo',
               style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.darkGray),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 6),
+            Text(
+              'Choose a source for your engagement photo',
+              style: TextStyle(fontSize: 13, color: AppTheme.darkGray.withOpacity(0.5)),
+            ),
+            const SizedBox(height: 24),
             Row(
               children: [
                 Expanded(
                   child: _imageSourceOption(
                     icon: Icons.camera_alt_rounded,
                     label: 'Camera',
+                    sublabel: 'Take a photo',
                     color: AppTheme.redPink,
                     onTap: () {
                       Navigator.pop(context);
@@ -204,11 +210,12 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
                     },
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: _imageSourceOption(
                     icon: Icons.photo_library_rounded,
                     label: 'Gallery',
+                    sublabel: 'Choose existing',
                     color: const Color(0xFF1565C0),
                     onTap: () {
                       Navigator.pop(context);
@@ -227,23 +234,34 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
   Widget _imageSourceOption({
     required IconData icon,
     required String label,
+    required String sublabel,
     required Color color,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 18),
+        padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(16),
+          color: color.withOpacity(0.07),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: color.withOpacity(0.18)),
         ),
         child: Column(
           children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 8),
-            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 13)),
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 26),
+            ),
+            const SizedBox(height: 10),
+            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 14)),
+            const SizedBox(height: 2),
+            Text(sublabel, style: TextStyle(color: color.withOpacity(0.6), fontSize: 11)),
           ],
         ),
       ),
@@ -317,6 +335,13 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 30,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -332,8 +357,16 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.school_rounded, color: Colors.white, size: 20),
-                        const SizedBox(width: 10),
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.school_rounded, color: Colors.white, size: 18),
+                        ),
+                        const SizedBox(width: 12),
                         const Expanded(
                           child: Text(
                             'Select Target Campus',
@@ -367,7 +400,9 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
                         final isSelected = tempSelected.contains(id);
                         return CheckboxListTile(
                           value: isSelected,
-                          onChanged: isUserCampus ? null : (val) {
+                          onChanged: isUserCampus
+                              ? null
+                              : (val) {
                             setS(() {
                               if (val == true) {
                                 tempSelected.add(id);
@@ -413,7 +448,7 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                     child: ElevatedButton(
                       onPressed: () {
                         setState(() => _selectedCampusIds = tempSelected);
@@ -524,11 +559,11 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
         statusBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F6FA),
+        backgroundColor: const Color(0xFFF4F5F9),
         body: Column(
           children: [
             _buildAppBar(),
-            _buildProgressSection(),
+            _buildStepIndicator(),
             Expanded(
               child: PageView(
                 controller: _pageController,
@@ -549,68 +584,138 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
   }
 
   Widget _buildAppBar() {
+    final stepTitles = ['Engagement Details', 'Location & Reach', 'Schedule & Points', 'Facilitator & Review'];
+    final stepSubtitles = [
+      'Basic info & photo',
+      'Venue, map & campus',
+      'Dates, timing & rewards',
+      'Final check before submit',
+    ];
     return Container(
-      color: AppTheme.redPink,
+      decoration: const BoxDecoration(
+        color: AppTheme.redPink,
+      ),
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top,
         left: 8,
         right: 16,
-        bottom: 12,
+        bottom: 16,
       ),
-      child: Row(
+      child: Column(
         children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
-          ),
-          const Expanded(
-            child: Text(
-              'Add Engagement',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.2,
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
               ),
-              textAlign: TextAlign.center,
+              const Expanded(
+                child: Text(
+                  'Add Engagement',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.2,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${_currentPage + 1} / $_totalPages',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        stepTitles[_currentPage],
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        stepSubtitles[_currentPage],
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.7),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 48),
         ],
       ),
     );
   }
 
-  Widget _buildProgressSection() {
+  Widget _buildStepIndicator() {
     final steps = ['Details', 'Location', 'Schedule', 'Review'];
     return Container(
       color: AppTheme.redPink,
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      child: Column(
-        children: [
-          Row(
-            children: List.generate(steps.length, (i) {
-              final isActive = i == _currentPage;
-              final isDone = i < _currentPage;
-              return Expanded(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+      child: Row(
+        children: List.generate(steps.length, (i) {
+          final isActive = i == _currentPage;
+          final isDone = i < _currentPage;
+          return Expanded(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    children: [
+                      Row(
                         children: [
+                          if (i > 0)
+                            Expanded(
+                              child: Container(
+                                height: 2,
+                                decoration: BoxDecoration(
+                                  color: i <= _currentPage
+                                      ? Colors.white
+                                      : Colors.white.withOpacity(0.25),
+                                  borderRadius: BorderRadius.circular(1),
+                                ),
+                              ),
+                            ),
                           AnimatedContainer(
                             duration: const Duration(milliseconds: 300),
-                            width: isActive ? 32 : 24,
-                            height: isActive ? 32 : 24,
+                            width: isActive ? 30 : 24,
+                            height: isActive ? 30 : 24,
                             decoration: BoxDecoration(
                               color: isDone
                                   ? Colors.white
                                   : isActive
                                   ? Colors.white
-                                  : Colors.white.withOpacity(0.3),
+                                  : Colors.white.withOpacity(0.25),
                               shape: BoxShape.circle,
                               boxShadow: isActive
-                                  ? [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8)]
+                                  ? [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 2))]
                                   : [],
                             ),
                             child: Center(
@@ -619,103 +724,111 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
                                   : Text(
                                 '${i + 1}',
                                 style: TextStyle(
-                                  color: isActive ? AppTheme.redPink : Colors.white.withOpacity(0.6),
-                                  fontSize: isActive ? 14 : 12,
-                                  fontWeight: FontWeight.w700,
+                                  color: isActive ? AppTheme.redPink : Colors.white.withOpacity(0.7),
+                                  fontSize: isActive ? 13 : 11,
+                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            steps[i],
-                            style: TextStyle(
-                              color: isActive ? Colors.white : Colors.white.withOpacity(0.55),
-                              fontSize: 10,
-                              fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
+                          if (i < steps.length - 1)
+                            Expanded(
+                              child: Container(
+                                height: 2,
+                                decoration: BoxDecoration(
+                                  color: i < _currentPage
+                                      ? Colors.white
+                                      : Colors.white.withOpacity(0.25),
+                                  borderRadius: BorderRadius.circular(1),
+                                ),
+                              ),
                             ),
-                          ),
                         ],
                       ),
-                    ),
-                    if (i < steps.length - 1)
-                      Expanded(
-                        child: Container(
-                          height: 2,
-                          margin: const EdgeInsets.only(bottom: 18),
-                          color: i < _currentPage
-                              ? Colors.white
-                              : Colors.white.withOpacity(0.25),
+                      const SizedBox(height: 6),
+                      Text(
+                        steps[i],
+                        style: TextStyle(
+                          color: isActive ? Colors.white : Colors.white.withOpacity(0.5),
+                          fontSize: 10,
+                          fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
                         ),
                       ),
-                  ],
+                    ],
+                  ),
                 ),
-              );
-            }),
-          ),
-        ],
+              ],
+            ),
+          );
+        }),
       ),
     );
   }
 
   Widget _buildPage1() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
       child: Form(
         key: _formKeys[0],
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionHeader(
-              icon: Icons.volunteer_activism_outlined,
-              title: 'Engagement Details',
-              subtitle: 'Fill in the basic information about this engagement',
-            ),
-            const SizedBox(height: 20),
             _buildImageUploader(),
-            const SizedBox(height: 20),
-            _buildDropdownCard(
-              label: 'Category',
-              icon: Icons.category_outlined,
-              hint: 'Select a category',
-              value: _selectedCategoryName,
-              required: true,
-              onTap: _showCategoryPicker,
+            const SizedBox(height: 16),
+            _buildCard(
+              child: Column(
+                children: [
+                  _buildDropdownCard(
+                    label: 'Category',
+                    icon: Icons.category_outlined,
+                    hint: 'Select engagement category',
+                    value: _selectedCategoryName,
+                    required: true,
+                    onTap: _showCategoryPicker,
+                  ),
+                  _buildDivider(),
+                  _buildTextField(
+                    controller: _titleCtrl,
+                    label: 'Engagement Title',
+                    icon: Icons.title_rounded,
+                    hint: 'e.g. Community Tree Planting Drive',
+                    validator: (v) => (v?.trim().isEmpty ?? true) ? 'Title is required' : null,
+                    required: true,
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 14),
-            _buildTextField(
-              controller: _titleCtrl,
-              label: 'Engagement Title',
-              icon: Icons.title_rounded,
-              hint: 'e.g. Community Tree Planting Drive',
-              validator: (v) => (v?.trim().isEmpty ?? true) ? 'Title is required' : null,
-              required: true,
-            ),
-            const SizedBox(height: 14),
-            _buildTextField(
-              controller: _descCtrl,
-              label: 'Description',
-              icon: Icons.description_outlined,
-              hint: 'Describe the engagement activity...',
-              maxLines: 3,
-              validator: (v) => (v?.trim().isEmpty ?? true) ? 'Description is required' : null,
-              required: true,
-            ),
-            const SizedBox(height: 14),
-            _buildTextField(
-              controller: _objectiveCtrl,
-              label: 'Objective',
-              icon: Icons.flag_outlined,
-              hint: 'What is the goal of this engagement?',
-              maxLines: 3,
-            ),
-            const SizedBox(height: 14),
-            _buildTextField(
-              controller: _instructionCtrl,
-              label: 'Instructions',
-              icon: Icons.list_alt_rounded,
-              hint: 'Provide instructions for participants...',
-              maxLines: 3,
+            const SizedBox(height: 12),
+            _buildCard(
+              child: Column(
+                children: [
+                  _buildTextField(
+                    controller: _descCtrl,
+                    label: 'Description',
+                    icon: Icons.description_outlined,
+                    hint: 'Describe the engagement activity in detail...',
+                    maxLines: 3,
+                    validator: (v) => (v?.trim().isEmpty ?? true) ? 'Description is required' : null,
+                    required: true,
+                  ),
+                  _buildDivider(),
+                  _buildTextField(
+                    controller: _objectiveCtrl,
+                    label: 'Objective',
+                    icon: Icons.flag_outlined,
+                    hint: 'What is the goal of this engagement?',
+                    maxLines: 2,
+                  ),
+                  _buildDivider(),
+                  _buildTextField(
+                    controller: _instructionCtrl,
+                    label: 'Instructions',
+                    icon: Icons.list_alt_rounded,
+                    hint: 'Provide step-by-step instructions for participants...',
+                    maxLines: 3,
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 80),
           ],
@@ -726,41 +839,47 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
 
   Widget _buildPage2() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
       child: Form(
         key: _formKeys[1],
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionHeader(
-              icon: Icons.location_on_outlined,
-              title: 'Location',
-              subtitle: 'Provide the engagement venue details',
+            _buildCard(
+              child: Column(
+                children: [
+                  _buildTextField(
+                    controller: _locationAddressCtrl,
+                    label: 'Location Address',
+                    icon: Icons.place_outlined,
+                    hint: 'e.g. Barangay Hall, Calamba, Laguna',
+                    maxLines: 2,
+                    validator: (v) => (v?.trim().isEmpty ?? true) ? 'Location address is required' : null,
+                    required: true,
+                  ),
+                  _buildDivider(),
+                  _buildLocationPinRow(),
+                ],
+              ),
             ),
-            const SizedBox(height: 20),
-            _buildTextField(
-              controller: _locationAddressCtrl,
-              label: 'Location Address',
-              icon: Icons.place_outlined,
-              hint: 'e.g. Barangay Hall, Calamba, Laguna',
-              maxLines: 2,
-              validator: (v) => (v?.trim().isEmpty ?? true) ? 'Location address is required' : null,
-              required: true,
-            ),
-            const SizedBox(height: 14),
-            _buildLocationPinCard(),
-            const SizedBox(height: 14),
-            _buildCampusCard(),
-            const SizedBox(height: 14),
-            _buildTextField(
-              controller: _targetParticipantsCtrl,
-              label: 'Target Participants',
-              icon: Icons.group_outlined,
-              hint: 'How many volunteers needed?',
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              validator: (v) => (v?.trim().isEmpty ?? true) ? 'Required' : null,
-              required: true,
+            const SizedBox(height: 12),
+            _buildCard(
+              child: Column(
+                children: [
+                  _buildCampusRow(),
+                  _buildDivider(),
+                  _buildTextField(
+                    controller: _targetParticipantsCtrl,
+                    label: 'Target Participants',
+                    icon: Icons.group_outlined,
+                    hint: 'How many volunteers needed?',
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    validator: (v) => (v?.trim().isEmpty ?? true) ? 'Required' : null,
+                    required: true,
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 80),
           ],
@@ -771,43 +890,45 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
 
   Widget _buildPage3() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
       child: Form(
         key: _formKeys[2],
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionHeader(
-              icon: Icons.calendar_month_outlined,
-              title: 'Schedule & Points',
-              subtitle: 'Set the schedule and activity points for this engagement',
+            _buildCard(
+              child: Column(
+                children: [
+                  _buildDateRow(
+                    label: 'Start Date & Time',
+                    icon: Icons.event_available_outlined,
+                    value: _startDate,
+                    isStart: true,
+                    required: true,
+                  ),
+                  _buildDivider(),
+                  _buildDateRow(
+                    label: 'End Date & Time',
+                    icon: Icons.event_busy_outlined,
+                    value: _endDate,
+                    isStart: false,
+                    required: true,
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 20),
-            _buildDateCard(
-              label: 'Start Date & Time',
-              icon: Icons.event_available_outlined,
-              value: _startDate,
-              isStart: true,
-              required: true,
-            ),
-            const SizedBox(height: 14),
-            _buildDateCard(
-              label: 'End Date & Time',
-              icon: Icons.event_busy_outlined,
-              value: _endDate,
-              isStart: false,
-              required: true,
-            ),
-            const SizedBox(height: 14),
-            _buildTextField(
-              controller: _activityPointsCtrl,
-              label: 'Activity Points',
-              icon: Icons.star_outline_rounded,
-              hint: 'Points earned after participating',
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              validator: (v) => (v?.trim().isEmpty ?? true) ? 'Required' : null,
-              required: true,
+            const SizedBox(height: 12),
+            _buildCard(
+              child: _buildTextField(
+                controller: _activityPointsCtrl,
+                label: 'Activity Points',
+                icon: Icons.star_outline_rounded,
+                hint: 'Points earned after participating',
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                validator: (v) => (v?.trim().isEmpty ?? true) ? 'Required' : null,
+                required: true,
+              ),
             ),
             const SizedBox(height: 80),
           ],
@@ -818,36 +939,36 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
 
   Widget _buildPage4() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
       child: Form(
         key: _formKeys[3],
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionHeader(
-              icon: Icons.person_outline_rounded,
-              title: 'Facilitator',
-              subtitle: 'Review facilitator info and finalize your submission',
+            _buildCard(
+              child: Column(
+                children: [
+                  _buildTextField(
+                    controller: _facilitatorNameCtrl,
+                    label: "Facilitator's Name",
+                    icon: Icons.badge_outlined,
+                    hint: 'Full name of the facilitator',
+                    validator: (v) => (v?.trim().isEmpty ?? true) ? 'Required' : null,
+                    required: true,
+                  ),
+                  _buildDivider(),
+                  _buildTextField(
+                    controller: _facilitatorContactCtrl,
+                    label: "Facilitator's Contact / Email",
+                    icon: Icons.contact_phone_outlined,
+                    hint: 'Contact number or email address',
+                    validator: (v) => (v?.trim().isEmpty ?? true) ? 'Required' : null,
+                    required: true,
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 20),
-            _buildTextField(
-              controller: _facilitatorNameCtrl,
-              label: "Facilitator's Name",
-              icon: Icons.badge_outlined,
-              hint: 'Name of the facilitator',
-              validator: (v) => (v?.trim().isEmpty ?? true) ? 'Required' : null,
-              required: true,
-            ),
-            const SizedBox(height: 14),
-            _buildTextField(
-              controller: _facilitatorContactCtrl,
-              label: "Facilitator's Contact / Email",
-              icon: Icons.contact_phone_outlined,
-              hint: 'Contact number or email address',
-              validator: (v) => (v?.trim().isEmpty ?? true) ? 'Required' : null,
-              required: true,
-            ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             _buildReviewCard(),
             const SizedBox(height: 80),
           ],
@@ -856,46 +977,29 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
     );
   }
 
-  Widget _buildSectionHeader({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-  }) {
-    return Row(
-      children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: AppTheme.redPink.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
+  Widget _buildCard({required Widget child}) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
           ),
-          child: Icon(icon, color: AppTheme.redPink, size: 22),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.darkGray,
-                ),
-              ),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.darkGray.withOpacity(0.55),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: child,
+    );
+  }
+
+  Widget _buildDivider() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Divider(height: 1, color: AppTheme.darkGray.withOpacity(0.08)),
     );
   }
 
@@ -911,13 +1015,13 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
           border: Border.all(
             color: _pickedImage != null
                 ? AppTheme.redPink.withOpacity(0.3)
-                : AppTheme.darkGray.withOpacity(0.12),
+                : AppTheme.darkGray.withOpacity(0.1),
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 10,
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 12,
               offset: const Offset(0, 2),
             ),
           ],
@@ -945,14 +1049,14 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
                     icon: Icons.edit_rounded,
                     onTap: _showImageSourceSheet,
                     color: Colors.white,
-                    bgColor: AppTheme.darkGray.withOpacity(0.7),
+                    bgColor: AppTheme.darkGray.withOpacity(0.75),
                   ),
                   const SizedBox(width: 6),
                   _imageActionBtn(
                     icon: Icons.close_rounded,
                     onTap: () => setState(() => _pickedImage = null),
                     color: Colors.white,
-                    bgColor: AppTheme.redPink.withOpacity(0.85),
+                    bgColor: AppTheme.redPink.withOpacity(0.9),
                   ),
                 ],
               ),
@@ -961,19 +1065,16 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
               bottom: 10,
               left: 10,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: Colors.black54,
+                  color: Colors.black.withOpacity(0.55),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.zoom_in_rounded, color: Colors.white, size: 14),
+                    Icon(Icons.zoom_in_rounded, color: Colors.white, size: 13),
                     SizedBox(width: 4),
-                    Text(
-                      'Tap to preview',
-                      style: TextStyle(color: Colors.white, fontSize: 11),
-                    ),
+                    Text('Tap to preview', style: TextStyle(color: Colors.white, fontSize: 11)),
                   ],
                 ),
               ),
@@ -984,31 +1085,23 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 56,
-              height: 56,
+              width: 60,
+              height: 60,
               decoration: BoxDecoration(
                 color: AppTheme.redPink.withOpacity(0.08),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.add_photo_alternate_outlined,
-                  color: AppTheme.redPink, size: 28),
+              child: const Icon(Icons.add_photo_alternate_outlined, color: AppTheme.redPink, size: 28),
             ),
             const SizedBox(height: 12),
             const Text(
               'Upload Engagement Photo',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: AppTheme.darkGray,
-                fontSize: 14,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.darkGray, fontSize: 14),
             ),
             const SizedBox(height: 4),
             Text(
-              'Tap to capture or choose from gallery',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppTheme.darkGray.withOpacity(0.5),
-              ),
+              'Optional — tap to capture or choose from gallery',
+              style: TextStyle(fontSize: 12, color: AppTheme.darkGray.withOpacity(0.45)),
             ),
           ],
         ),
@@ -1051,7 +1144,7 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildLabel(label, required: required),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         TextFormField(
           controller: controller,
           maxLines: maxLines,
@@ -1061,29 +1154,32 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
           style: const TextStyle(fontSize: 14, color: AppTheme.darkGray),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: AppTheme.darkGray.withOpacity(0.38), fontSize: 13),
-            prefixIcon: Icon(icon, color: AppTheme.darkGray.withOpacity(0.5), size: 20),
+            hintStyle: TextStyle(color: AppTheme.darkGray.withOpacity(0.35), fontSize: 13),
+            prefixIcon: Padding(
+              padding: const EdgeInsets.only(left: 2),
+              child: Icon(icon, color: AppTheme.darkGray.withOpacity(0.45), size: 20),
+            ),
             filled: true,
-            fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            fillColor: const Color(0xFFF8F9FB),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: AppTheme.darkGray.withOpacity(0.15)),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppTheme.darkGray.withOpacity(0.1)),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: AppTheme.darkGray.withOpacity(0.15)),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppTheme.darkGray.withOpacity(0.1)),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: AppTheme.redPink, width: 1.8),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.red, width: 1.5),
             ),
             focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.red, width: 1.8),
             ),
           ),
@@ -1123,33 +1219,39 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildLabel(label, required: required),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         GestureDetector(
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppTheme.darkGray.withOpacity(0.15)),
+              color: const Color(0xFFF8F9FB),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: value != null
+                    ? AppTheme.redPink.withOpacity(0.35)
+                    : AppTheme.darkGray.withOpacity(0.1),
+              ),
             ),
             child: Row(
               children: [
-                Icon(icon, color: AppTheme.darkGray.withOpacity(0.5), size: 20),
-                const SizedBox(width: 12),
+                Icon(
+                  icon,
+                  color: value != null ? AppTheme.redPink : AppTheme.darkGray.withOpacity(0.45),
+                  size: 20,
+                ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     value ?? hint,
                     style: TextStyle(
                       fontSize: 14,
-                      color: value != null
-                          ? AppTheme.darkGray
-                          : AppTheme.darkGray.withOpacity(0.38),
+                      fontWeight: value != null ? FontWeight.w600 : FontWeight.w400,
+                      color: value != null ? AppTheme.darkGray : AppTheme.darkGray.withOpacity(0.38),
                     ),
                   ),
                 ),
-                Icon(Icons.keyboard_arrow_down_rounded,
-                    color: AppTheme.darkGray.withOpacity(0.5), size: 20),
+                Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.darkGray.withOpacity(0.45), size: 20),
               ],
             ),
           ),
@@ -1158,89 +1260,86 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
     );
   }
 
-  Widget _buildLocationPinCard() {
+  Widget _buildLocationPinRow() {
+    final hasPinned = _latitude != null && _longitude != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildLabel('Pin on Map', required: false),
-        const SizedBox(height: 6),
+        Row(
+          children: [
+            const Text(
+              'Pin on Map',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.darkGray),
+            ),
+            const SizedBox(width: 6),
+            if (hasPinned)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2E7D5E).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'Pinned',
+                  style: TextStyle(fontSize: 10, color: Color(0xFF2E7D5E), fontWeight: FontWeight.w700),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
         GestureDetector(
           onTap: _openLocationPicker,
           child: Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
+              color: hasPinned ? AppTheme.redPink.withOpacity(0.04) : const Color(0xFFF8F9FB),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: (_latitude != null && _longitude != null)
-                    ? AppTheme.redPink.withOpacity(0.4)
-                    : AppTheme.darkGray.withOpacity(0.15),
+                color: hasPinned ? AppTheme.redPink.withOpacity(0.35) : AppTheme.darkGray.withOpacity(0.1),
               ),
             ),
-            child: _latitude != null && _longitude != null
-                ? Row(
+            child: Row(
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
-                    color: AppTheme.redPink.withOpacity(0.1),
+                    color: hasPinned ? AppTheme.redPink.withOpacity(0.12) : AppTheme.darkGray.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.location_on_rounded,
-                      color: AppTheme.redPink, size: 20),
+                  child: Icon(
+                    hasPinned ? Icons.location_on_rounded : Icons.add_location_alt_outlined,
+                    color: hasPinned ? AppTheme.redPink : AppTheme.darkGray.withOpacity(0.45),
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
+                  child: hasPinned
+                      ? Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
                         'Location pinned',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.darkGray,
-                          fontSize: 13,
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.darkGray, fontSize: 13),
                       ),
+                      const SizedBox(height: 2),
                       Text(
                         'Lat: ${_latitude!.toStringAsFixed(6)}, Lng: ${_longitude!.toStringAsFixed(6)}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppTheme.darkGray.withOpacity(0.55),
-                        ),
+                        style: TextStyle(fontSize: 11, color: AppTheme.darkGray.withOpacity(0.5)),
                       ),
                     ],
-                  ),
-                ),
-                Icon(Icons.edit_location_alt_outlined,
-                    color: AppTheme.redPink.withOpacity(0.7), size: 20),
-              ],
-            )
-                : Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppTheme.darkGray.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(Icons.add_location_alt_outlined,
-                      color: AppTheme.darkGray.withOpacity(0.5), size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
+                  )
+                      : Text(
                     'Tap to pin exact location on map',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppTheme.darkGray.withOpacity(0.45),
-                    ),
+                    style: TextStyle(fontSize: 13, color: AppTheme.darkGray.withOpacity(0.45)),
                   ),
                 ),
-                Icon(Icons.chevron_right_rounded,
-                    color: AppTheme.darkGray.withOpacity(0.3), size: 20),
+                Icon(
+                  hasPinned ? Icons.edit_location_alt_outlined : Icons.chevron_right_rounded,
+                  color: hasPinned ? AppTheme.redPink.withOpacity(0.7) : AppTheme.darkGray.withOpacity(0.3),
+                  size: 20,
+                ),
               ],
             ),
           ),
@@ -1249,7 +1348,7 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
     );
   }
 
-  Widget _buildCampusCard() {
+  Widget _buildCampusRow() {
     final selectedNames = _campuses
         .where((c) => _selectedCampusIds.contains(c['campusId'] as int))
         .map((c) => c['campusName'] as String)
@@ -1258,57 +1357,66 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildLabel('Target Campus', required: true),
-        const SizedBox(height: 6),
+        Row(
+          children: [
+            const Text(
+              'Target Campus',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.darkGray),
+            ),
+            const SizedBox(width: 3),
+            const Text('*', style: TextStyle(color: AppTheme.redPink, fontSize: 13)),
+          ],
+        ),
+        const SizedBox(height: 8),
         GestureDetector(
           onTap: _showCampusDialog,
           child: Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppTheme.darkGray.withOpacity(0.15)),
+              color: selectedNames.isNotEmpty ? AppTheme.redPink.withOpacity(0.04) : const Color(0xFFF8F9FB),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: selectedNames.isNotEmpty
+                    ? AppTheme.redPink.withOpacity(0.35)
+                    : AppTheme.darkGray.withOpacity(0.1),
+              ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.school_outlined,
-                    color: AppTheme.darkGray.withOpacity(0.5), size: 20),
-                const SizedBox(width: 12),
+                Icon(
+                  Icons.school_outlined,
+                  color: selectedNames.isNotEmpty ? AppTheme.redPink : AppTheme.darkGray.withOpacity(0.45),
+                  size: 20,
+                ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: selectedNames.isEmpty
                       ? Text(
                     'Select target campus',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppTheme.darkGray.withOpacity(0.38),
-                    ),
+                    style: TextStyle(fontSize: 14, color: AppTheme.darkGray.withOpacity(0.38)),
                   )
                       : Wrap(
                     spacing: 6,
                     runSpacing: 6,
-                    children: selectedNames.map((name) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.redPink.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppTheme.redPink.withOpacity(0.25)),
-                        ),
-                        child: Text(
-                          name,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.redPink,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                    children: selectedNames
+                        .map((name) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.redPink.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        name,
+                        style: const TextStyle(
+                            fontSize: 12, color: AppTheme.redPink, fontWeight: FontWeight.w600),
+                      ),
+                    ))
+                        .toList(),
                   ),
                 ),
-                Icon(Icons.keyboard_arrow_down_rounded,
-                    color: AppTheme.darkGray.withOpacity(0.5), size: 20),
+                const SizedBox(width: 6),
+                Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.darkGray.withOpacity(0.45), size: 20),
               ],
             ),
           ),
@@ -1317,7 +1425,7 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
     );
   }
 
-  Widget _buildDateCard({
+  Widget _buildDateRow({
     required String label,
     required IconData icon,
     required DateTime? value,
@@ -1328,44 +1436,39 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildLabel(label, required: required),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         GestureDetector(
           onTap: () => _pickDateTime(isStart),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
+              color: value != null ? AppTheme.redPink.withOpacity(0.04) : const Color(0xFFF8F9FB),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: value != null
-                    ? AppTheme.redPink.withOpacity(0.4)
-                    : AppTheme.darkGray.withOpacity(0.15),
+                color: value != null ? AppTheme.redPink.withOpacity(0.35) : AppTheme.darkGray.withOpacity(0.1),
               ),
             ),
             child: Row(
               children: [
-                Icon(icon,
-                    color: value != null
-                        ? AppTheme.redPink
-                        : AppTheme.darkGray.withOpacity(0.5),
-                    size: 20),
-                const SizedBox(width: 12),
+                Icon(
+                  icon,
+                  color: value != null ? AppTheme.redPink : AppTheme.darkGray.withOpacity(0.45),
+                  size: 20,
+                ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     value != null
-                        ? DateFormat('MMM dd, yyyy  hh:mm a').format(value)
+                        ? DateFormat('MMM dd, yyyy  •  hh:mm a').format(value)
                         : 'Select date and time',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: value != null ? FontWeight.w600 : FontWeight.w400,
-                      color: value != null
-                          ? AppTheme.darkGray
-                          : AppTheme.darkGray.withOpacity(0.38),
+                      color: value != null ? AppTheme.darkGray : AppTheme.darkGray.withOpacity(0.38),
                     ),
                   ),
                 ),
-                Icon(Icons.calendar_today_rounded,
-                    color: AppTheme.darkGray.withOpacity(0.4), size: 16),
+                Icon(Icons.calendar_today_rounded, color: AppTheme.darkGray.withOpacity(0.35), size: 15),
               ],
             ),
           ),
@@ -1375,54 +1478,20 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
   }
 
   Widget _buildReviewCard() {
-    final fmt = DateFormat('MMM dd, yyyy  hh:mm a');
-    final items = [
-      _ReviewItem(icon: Icons.title_rounded, label: 'Title', value: _titleCtrl.text.trim()),
-      _ReviewItem(
-          icon: Icons.category_outlined,
-          label: 'Category',
-          value: _selectedCategoryName ?? 'Not selected'),
-      _ReviewItem(
-          icon: Icons.place_outlined,
-          label: 'Address',
-          value: _locationAddressCtrl.text.trim()),
-      _ReviewItem(
-          icon: Icons.location_on_rounded,
-          label: 'Coordinates',
-          value: _latitude != null
-              ? '${_latitude!.toStringAsFixed(5)}, ${_longitude!.toStringAsFixed(5)}'
-              : 'Not pinned'),
-      _ReviewItem(
-          icon: Icons.event_available_outlined,
-          label: 'Start',
-          value: _startDate != null ? fmt.format(_startDate!) : 'Not set'),
-      _ReviewItem(
-          icon: Icons.event_busy_outlined,
-          label: 'End',
-          value: _endDate != null ? fmt.format(_endDate!) : 'Not set'),
-      _ReviewItem(
-          icon: Icons.group_outlined,
-          label: 'Target Participants',
-          value: _targetParticipantsCtrl.text.trim().isEmpty
-              ? 'Not set'
-              : _targetParticipantsCtrl.text.trim()),
-      _ReviewItem(
-          icon: Icons.star_outline_rounded,
-          label: 'Activity Points',
-          value: _activityPointsCtrl.text.trim().isEmpty
-              ? 'Not set'
-              : _activityPointsCtrl.text.trim()),
-    ];
+    final fmt = DateFormat('MMM dd, yyyy  •  hh:mm a');
+    final selectedCampusNames = _campuses
+        .where((c) => _selectedCampusIds.contains(c['campusId'] as int))
+        .map((c) => c['campusName'] as String)
+        .join(', ');
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.darkGray.withOpacity(0.1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 12,
             offset: const Offset(0, 2),
           ),
         ],
@@ -1432,62 +1501,187 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
           Container(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
             decoration: BoxDecoration(
-              color: AppTheme.redPink.withOpacity(0.06),
+              color: AppTheme.redPink,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(18),
                 topRight: Radius.circular(18),
               ),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.preview_rounded, color: AppTheme.redPink, size: 18),
-                SizedBox(width: 8),
-                Text(
-                  'Submission Summary',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.darkGray,
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
                   ),
+                  child: const Icon(Icons.fact_check_outlined, color: Colors.white, size: 17),
+                ),
+                const SizedBox(width: 10),
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Submission Summary',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                    ),
+                    Text(
+                      'Review all details before submitting',
+                      style: TextStyle(fontSize: 11, color: Colors.white70),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          ...items.map((item) => _buildReviewRow(item)),
+          _buildReviewSection(
+            sectionLabel: 'ENGAGEMENT',
+            items: [
+              _ReviewItem(icon: Icons.title_rounded, label: 'Title', value: _titleCtrl.text.trim()),
+              _ReviewItem(icon: Icons.category_outlined, label: 'Category', value: _selectedCategoryName ?? '—'),
+              _ReviewItem(icon: Icons.description_outlined, label: 'Description', value: _descCtrl.text.trim()),
+              _ReviewItem(icon: Icons.flag_outlined, label: 'Objective', value: _objectiveCtrl.text.trim()),
+              _ReviewItem(icon: Icons.list_alt_rounded, label: 'Instructions', value: _instructionCtrl.text.trim()),
+              _ReviewItem(
+                icon: Icons.image_outlined,
+                label: 'Photo',
+                value: _pickedImage != null ? 'Photo attached' : 'No photo',
+                isSuccess: _pickedImage != null,
+              ),
+            ],
+          ),
+          _buildReviewSectionDivider(),
+          _buildReviewSection(
+            sectionLabel: 'LOCATION & REACH',
+            items: [
+              _ReviewItem(icon: Icons.place_outlined, label: 'Address', value: _locationAddressCtrl.text.trim()),
+              _ReviewItem(
+                icon: Icons.location_on_rounded,
+                label: 'Coordinates',
+                value: _latitude != null
+                    ? '${_latitude!.toStringAsFixed(5)}, ${_longitude!.toStringAsFixed(5)}'
+                    : 'Not pinned',
+                isSuccess: _latitude != null,
+              ),
+              _ReviewItem(icon: Icons.school_outlined, label: 'Campus', value: selectedCampusNames.isEmpty ? '—' : selectedCampusNames),
+              _ReviewItem(
+                icon: Icons.group_outlined,
+                label: 'Target Participants',
+                value: _targetParticipantsCtrl.text.trim().isEmpty ? '—' : _targetParticipantsCtrl.text.trim(),
+              ),
+            ],
+          ),
+          _buildReviewSectionDivider(),
+          _buildReviewSection(
+            sectionLabel: 'SCHEDULE & POINTS',
+            items: [
+              _ReviewItem(
+                icon: Icons.event_available_outlined,
+                label: 'Start',
+                value: _startDate != null ? fmt.format(_startDate!) : '—',
+              ),
+              _ReviewItem(
+                icon: Icons.event_busy_outlined,
+                label: 'End',
+                value: _endDate != null ? fmt.format(_endDate!) : '—',
+              ),
+              _ReviewItem(
+                icon: Icons.star_outline_rounded,
+                label: 'Activity Points',
+                value: _activityPointsCtrl.text.trim().isEmpty ? '—' : _activityPointsCtrl.text.trim(),
+              ),
+            ],
+          ),
+          _buildReviewSectionDivider(),
+          _buildReviewSection(
+            sectionLabel: 'FACILITATOR',
+            items: [
+              _ReviewItem(icon: Icons.badge_outlined, label: 'Name', value: _facilitatorNameCtrl.text.trim()),
+              _ReviewItem(icon: Icons.contact_phone_outlined, label: 'Contact', value: _facilitatorContactCtrl.text.trim()),
+            ],
+          ),
+          const SizedBox(height: 4),
         ],
       ),
     );
   }
 
+  Widget _buildReviewSection({required String sectionLabel, required List<_ReviewItem> items}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+          child: Text(
+            sectionLabel,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.redPink.withOpacity(0.7),
+              letterSpacing: 1.2,
+            ),
+          ),
+        ),
+        ...items.map((item) => _buildReviewRow(item)),
+      ],
+    );
+  }
+
+  Widget _buildReviewSectionDivider() {
+    return Divider(height: 1, color: AppTheme.darkGray.withOpacity(0.07), indent: 16, endIndent: 16);
+  }
+
   Widget _buildReviewRow(_ReviewItem item) {
+    final isEmpty = item.value.trim().isEmpty || item.value == '—';
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(item.icon, size: 16, color: AppTheme.redPink.withOpacity(0.7)),
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: isEmpty
+                  ? AppTheme.darkGray.withOpacity(0.05)
+                  : item.isSuccess == true
+                  ? const Color(0xFF2E7D5E).withOpacity(0.1)
+                  : AppTheme.redPink.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              item.icon,
+              size: 14,
+              color: isEmpty
+                  ? AppTheme.darkGray.withOpacity(0.3)
+                  : item.isSuccess == true
+                  ? const Color(0xFF2E7D5E)
+                  : AppTheme.redPink.withOpacity(0.7),
+            ),
+          ),
           const SizedBox(width: 10),
           SizedBox(
-            width: 110,
+            width: 100,
             child: Text(
               item.label,
               style: TextStyle(
                 fontSize: 12,
-                color: AppTheme.darkGray.withOpacity(0.55),
+                color: AppTheme.darkGray.withOpacity(0.5),
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
           Expanded(
             child: Text(
-              item.value.isEmpty ? '—' : item.value,
+              isEmpty ? '—' : item.value,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: item.value.isEmpty || item.value == '—'
-                    ? AppTheme.darkGray.withOpacity(0.3)
-                    : AppTheme.darkGray,
+                color: isEmpty ? AppTheme.darkGray.withOpacity(0.28) : AppTheme.darkGray,
               ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -1498,13 +1692,13 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
   Widget _buildBottomNav() {
     final isLastPage = _currentPage == _totalPages - 1;
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 14, 20, MediaQuery.of(context).padding.bottom + 14),
+      padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 12),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 16,
+            color: Colors.black.withOpacity(0.07),
+            blurRadius: 20,
             offset: const Offset(0, -4),
           ),
         ],
@@ -1512,34 +1706,32 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
       child: Row(
         children: [
           if (_currentPage > 0)
-            Expanded(
+            Container(
+              margin: const EdgeInsets.only(right: 12),
               child: OutlinedButton(
                 onPressed: _prevPage,
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                   side: BorderSide(color: AppTheme.darkGray.withOpacity(0.2)),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
                 child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.arrow_back_rounded, size: 18, color: AppTheme.darkGray),
+                    Icon(Icons.arrow_back_rounded, size: 17, color: AppTheme.darkGray),
                     SizedBox(width: 6),
-                    Text('Back', style: TextStyle(color: AppTheme.darkGray, fontWeight: FontWeight.w600)),
+                    Text('Back', style: TextStyle(color: AppTheme.darkGray, fontWeight: FontWeight.w600, fontSize: 14)),
                   ],
                 ),
               ),
             ),
-          if (_currentPage > 0) const SizedBox(width: 12),
           Expanded(
-            flex: 2,
             child: ElevatedButton(
               onPressed: _isSubmitting ? null : (isLastPage ? _submitEngagement : _nextPage),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.redPink,
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: AppTheme.redPink.withOpacity(0.6),
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                padding: const EdgeInsets.symmetric(vertical: 15),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 elevation: 0,
               ),
@@ -1547,17 +1739,14 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
                   ? const SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
               )
                   : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     isLastPage ? 'Submit Engagement' : 'Continue',
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                   ),
                   const SizedBox(width: 6),
                   Icon(
@@ -1590,14 +1779,14 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
           decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(24),
-              topRight: Radius.circular(24),
+              topLeft: Radius.circular(28),
+              topRight: Radius.circular(28),
             ),
           ),
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
                 child: Column(
                   children: [
                     Container(
@@ -1609,16 +1798,35 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const Text(
-                      'Select Category',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.darkGray,
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: AppTheme.redPink.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.category_outlined, color: AppTheme.redPink, size: 18),
+                        ),
+                        const SizedBox(width: 12),
+                        const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Select Category',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.darkGray),
+                            ),
+                            Text(
+                              'Choose the engagement type',
+                              style: TextStyle(fontSize: 12, color: Color(0xFF888888)),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    Divider(color: AppTheme.darkGray.withOpacity(0.1)),
+                    const SizedBox(height: 14),
+                    Divider(color: AppTheme.darkGray.withOpacity(0.08)),
                   ],
                 ),
               ),
@@ -1626,47 +1834,58 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
                 child: ListView.builder(
                   controller: scrollCtrl,
                   itemCount: _categories.length,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   itemBuilder: (_, i) {
                     final cat = _categories[i];
                     final id = cat['categoryId'] as int;
                     final name = cat['categoryName'] as String;
                     final isSelected = _selectedCategoryId == id;
-                    return ListTile(
-                      onTap: () {
-                        setState(() {
-                          _selectedCategoryId = id;
-                          _selectedCategoryName = name;
-                        });
-                        Navigator.pop(context);
-                      },
-                      leading: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppTheme.redPink.withOpacity(0.1)
-                              : AppTheme.darkGray.withOpacity(0.06),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          Icons.volunteer_activism_outlined,
-                          color: isSelected ? AppTheme.redPink : AppTheme.darkGray.withOpacity(0.5),
-                          size: 20,
-                        ),
+                    return Container(
+                      margin: const EdgeInsets.symmetric(vertical: 3),
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppTheme.redPink.withOpacity(0.05) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        border: isSelected
+                            ? Border.all(color: AppTheme.redPink.withOpacity(0.25))
+                            : null,
                       ),
-                      title: Text(
-                        name,
-                        style: TextStyle(
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                          color: isSelected ? AppTheme.redPink : AppTheme.darkGray,
-                          fontSize: 14,
+                      child: ListTile(
+                        onTap: () {
+                          setState(() {
+                            _selectedCategoryId = id;
+                            _selectedCategoryName = name;
+                          });
+                          Navigator.pop(context);
+                        },
+                        leading: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppTheme.redPink.withOpacity(0.12)
+                                : AppTheme.darkGray.withOpacity(0.06),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            Icons.volunteer_activism_outlined,
+                            color: isSelected ? AppTheme.redPink : AppTheme.darkGray.withOpacity(0.45),
+                            size: 20,
+                          ),
                         ),
+                        title: Text(
+                          name,
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected ? AppTheme.redPink : AppTheme.darkGray,
+                            fontSize: 14,
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? const Icon(Icons.check_circle_rounded, color: AppTheme.redPink, size: 20)
+                            : null,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       ),
-                      trailing: isSelected
-                          ? const Icon(Icons.check_circle_rounded, color: AppTheme.redPink, size: 20)
-                          : null,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     );
                   },
                 ),
@@ -1683,5 +1902,6 @@ class _ReviewItem {
   final IconData icon;
   final String label;
   final String value;
-  const _ReviewItem({required this.icon, required this.label, required this.value});
+  final bool? isSuccess;
+  const _ReviewItem({required this.icon, required this.label, required this.value, this.isSuccess});
 }
