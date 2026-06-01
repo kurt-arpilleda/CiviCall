@@ -17,6 +17,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final GlobalKey<EngagementFeedScreenState> _engagementFeedKey = GlobalKey<EngagementFeedScreenState>();
 
   static const List<String> _pageTitles = [
     'Home',
@@ -98,9 +99,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   icon: Icons.volunteer_activism_outlined,
                   label: 'Add Engagement',
                   color: const Color(0xFF2E7D5E),
-                  onTap: () {
+                  onTap: () async {
                     Navigator.pop(context);
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const AddEngagementScreen()));
+                    await Navigator.push(context, MaterialPageRoute(builder: (_) => const AddEngagementScreen()));
+                    _engagementFeedKey.currentState?.refresh();
                   },
                 ),
                 _buildActionChip(
@@ -109,7 +111,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   color: const Color(0xFF1565C0),
                   onTap: () {
                     Navigator.pop(context);
-                    // TODO: Event navigation
                   },
                 ),
                 _buildActionChip(
@@ -118,7 +119,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   color: const Color(0xFF6A1B9A),
                   onTap: () {
                     Navigator.pop(context);
-                    // TODO: Post in forum navigation
                   },
                 ),
               ],
@@ -211,7 +211,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         body: IndexedStack(
           index: pageIndex,
-          children: _pages,
+          children: [
+            EngagementFeedScreen(key: _engagementFeedKey),
+            _pages[1],
+            _pages[2],
+            _pages[3],
+          ],
         ),
         bottomNavigationBar: _buildBottomNav(),
         floatingActionButton: _buildCenterFab(),

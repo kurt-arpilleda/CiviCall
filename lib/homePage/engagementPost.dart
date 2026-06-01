@@ -10,10 +10,10 @@ class EngagementFeedScreen extends StatefulWidget {
   const EngagementFeedScreen({Key? key}) : super(key: key);
 
   @override
-  State<EngagementFeedScreen> createState() => _EngagementFeedScreenState();
+  State<EngagementFeedScreen> createState() => EngagementFeedScreenState();
 }
 
-class _EngagementFeedScreenState extends State<EngagementFeedScreen> {
+class EngagementFeedScreenState extends State<EngagementFeedScreen> {
   final ApiService _apiService = ApiService();
   List<Map<String, dynamic>> _engagements = [];
   bool _isLoading = true;
@@ -24,6 +24,10 @@ class _EngagementFeedScreenState extends State<EngagementFeedScreen> {
   void initState() {
     super.initState();
     _loadEngagements();
+  }
+
+  Future<void> refresh() async {
+    await _loadEngagements();
   }
 
   Future<void> _loadEngagements() async {
