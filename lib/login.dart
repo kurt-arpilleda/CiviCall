@@ -119,9 +119,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         return;
       }
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final String email = googleUser.email;
-      final String googleId = googleAuth.idToken ?? googleUser.id;
+      final String googleId = googleUser.id;
 
       String firstName = '';
       String lastName = '';
