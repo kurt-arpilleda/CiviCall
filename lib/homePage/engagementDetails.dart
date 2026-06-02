@@ -124,11 +124,79 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
     });
   }
 
-  Future<void> _saveEdit() async {
+  bool _validateEditForm() {
+    if (_editCategoryId == null) {
+      _showSnack('Please select a category.', isError: true);
+      return false;
+    }
     if (_titleCtrl.text.trim().isEmpty) {
       _showSnack('Title is required.', isError: true);
-      return;
+      return false;
     }
+    if (_descCtrl.text.trim().isEmpty) {
+      _showSnack('Description is required.', isError: true);
+      return false;
+    }
+    if (_objectiveCtrl.text.trim().isEmpty) {
+      _showSnack('Objective is required.', isError: true);
+      return false;
+    }
+    if (_instructionCtrl.text.trim().isEmpty) {
+      _showSnack('Instructions are required.', isError: true);
+      return false;
+    }
+    if (_locationCtrl.text.trim().isEmpty) {
+      _showSnack('Location address is required.', isError: true);
+      return false;
+    }
+    if (_editLat == null || _editLng == null) {
+      _showSnack('Please pin the location on the map.', isError: true);
+      return false;
+    }
+    if (_editCampusIds.isEmpty) {
+      _showSnack('Please select at least one target campus.', isError: true);
+      return false;
+    }
+    final target = int.tryParse(_targetCtrl.text.trim());
+    if (target == null || target <= 0) {
+      _showSnack('Target participants must be a positive number.', isError: true);
+      return false;
+    }
+    if (_editStart == null) {
+      _showSnack('Start date and time are required.', isError: true);
+      return false;
+    }
+    if (_editEnd == null) {
+      _showSnack('End date and time are required.', isError: true);
+      return false;
+    }
+    if (_editEnd!.isBefore(_editStart!)) {
+      _showSnack('End date must be after start date.', isError: true);
+      return false;
+    }
+    final points = int.tryParse(_pointsCtrl.text.trim());
+    if (points == null || points <= 0) {
+      _showSnack('Activity points must be a positive number.', isError: true);
+      return false;
+    }
+    if (_facilitatorCtrl.text.trim().isEmpty) {
+      _showSnack('Facilitator name is required.', isError: true);
+      return false;
+    }
+    if (_facilitatorContactCtrl.text.trim().isEmpty) {
+      _showSnack('Facilitator contact is required.', isError: true);
+      return false;
+    }
+    final hasExistingImage = (_engagement['engagementImage'] as String? ?? '').isNotEmpty;
+    if (!hasExistingImage && _newImage == null) {
+      _showSnack('An engagement photo is required.', isError: true);
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> _saveEdit() async {
+    if (!_validateEditForm()) return;
     setState(() => _isSaving = true);
 
     final startStr = _editStart != null ? DateFormat('yyyy-MM-dd HH:mm:ss').format(_editStart!) : '';
@@ -913,25 +981,25 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
           _buildEditSectionHeader(Icons.edit_note_rounded, 'Edit Engagement', 'Make changes below'),
           const SizedBox(height: 20),
           _buildEditCard('Basic Info', Icons.info_outline_rounded, [
-            _editDropdownTile('Category', _editCategoryName ?? 'Select Category', Icons.category_outlined, _showCategoryPicker),
+            _editDropdownTile('Category', _editCategoryName ?? 'Select Category', Icons.category_outlined, _showCategoryPicker, required: true),
             const SizedBox(height: 14),
-            _editField('Title', _titleCtrl, Icons.title_rounded, maxLines: 1),
+            _editField('Title', _titleCtrl, Icons.title_rounded, maxLines: 1, required: true),
             const SizedBox(height: 14),
-            _editField('Description', _descCtrl, Icons.description_outlined, maxLines: 4),
+            _editField('Description', _descCtrl, Icons.description_outlined, maxLines: 4, required: true),
             const SizedBox(height: 14),
-            _editField('Objective', _objectiveCtrl, Icons.flag_outlined, maxLines: 3),
+            _editField('Objective', _objectiveCtrl, Icons.flag_outlined, maxLines: 3, required: true),
             const SizedBox(height: 14),
-            _editField('Instructions', _instructionCtrl, Icons.list_alt_outlined, maxLines: 3),
+            _editField('Instructions', _instructionCtrl, Icons.list_alt_outlined, maxLines: 3, required: true),
           ]),
           const SizedBox(height: 14),
           _buildEditCard('Schedule', Icons.schedule_rounded, [
-            _editDateTile('Start Date & Time', _editStart, () => _pickDateTime(true), const Color(0xFF2E7D5E)),
+            _editDateTile('Start Date & Time', _editStart, () => _pickDateTime(true), const Color(0xFF2E7D5E), required: true),
             const SizedBox(height: 12),
-            _editDateTile('End Date & Time', _editEnd, () => _pickDateTime(false), const Color(0xFF6A1B9A)),
+            _editDateTile('End Date & Time', _editEnd, () => _pickDateTime(false), const Color(0xFF6A1B9A), required: true),
           ]),
           const SizedBox(height: 14),
           _buildEditCard('Location', Icons.location_on_outlined, [
-            _editField('Address', _locationCtrl, Icons.location_on_outlined, maxLines: 2),
+            _editField('Address', _locationCtrl, Icons.location_on_outlined, maxLines: 2, required: true),
             const SizedBox(height: 12),
             GestureDetector(
               onTap: () async {
@@ -972,15 +1040,15 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
           ]),
           const SizedBox(height: 14),
           _buildEditCard('Participation', Icons.people_outline_rounded, [
-            _editField('Target Participants', _targetCtrl, Icons.group_outlined, keyboardType: TextInputType.number, maxLines: 1),
+            _editField('Target Participants', _targetCtrl, Icons.group_outlined, keyboardType: TextInputType.number, maxLines: 1, required: true),
             const SizedBox(height: 14),
-            _editField('Activity Points', _pointsCtrl, Icons.star_outline_rounded, keyboardType: TextInputType.number, maxLines: 1),
+            _editField('Activity Points', _pointsCtrl, Icons.star_outline_rounded, keyboardType: TextInputType.number, maxLines: 1, required: true),
           ]),
           const SizedBox(height: 14),
           _buildEditCard('Facilitator', Icons.person_outline_rounded, [
-            _editField('Facilitator Name', _facilitatorCtrl, Icons.badge_outlined, maxLines: 1),
+            _editField('Facilitator Name', _facilitatorCtrl, Icons.badge_outlined, maxLines: 1, required: true),
             const SizedBox(height: 14),
-            _editField('Contact Number', _facilitatorContactCtrl, Icons.phone_outlined, keyboardType: TextInputType.phone, maxLines: 1),
+            _editField('Contact Number', _facilitatorContactCtrl, Icons.phone_outlined, keyboardType: TextInputType.phone, maxLines: 1, required: true),
           ]),
           const SizedBox(height: 14),
           _buildEditCard('Target Campus', Icons.school_rounded, [
@@ -989,6 +1057,7 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
               _editCampusIds.isEmpty ? 'Select campuses' : '${_editCampusIds.length} campus(es) selected',
               Icons.school_outlined,
               _showCampusPicker,
+              required: true,
             ),
           ]),
         ],
@@ -1047,84 +1116,129 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
     );
   }
 
-  Widget _editField(String label, TextEditingController ctrl, IconData icon, {int maxLines = 1, TextInputType keyboardType = TextInputType.text}) {
-    return TextFormField(
-      controller: ctrl,
-      maxLines: maxLines,
-      keyboardType: keyboardType,
-      style: const TextStyle(fontSize: 14, color: AppTheme.darkGray, fontFamily: 'Lato'),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(fontSize: 13, color: AppTheme.darkGray.withOpacity(0.5), fontFamily: 'Lato'),
-        prefixIcon: Icon(icon, size: 18, color: AppTheme.darkGray.withOpacity(0.4)),
-        filled: true,
-        fillColor: const Color(0xFFF8F9FC),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppTheme.darkGray.withOpacity(0.12))),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppTheme.darkGray.withOpacity(0.12))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.redPink, width: 1.5)),
-      ),
-    );
-  }
-
-  Widget _editDropdownTile(String label, String value, IconData icon, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8F9FC),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTheme.darkGray.withOpacity(0.12)),
-        ),
-        child: Row(
+  Widget _editField(String label, TextEditingController ctrl, IconData icon, {int maxLines = 1, TextInputType keyboardType = TextInputType.text, bool required = false}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Icon(icon, size: 18, color: AppTheme.darkGray.withOpacity(0.4)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label, style: TextStyle(fontSize: 11, color: AppTheme.darkGray.withOpacity(0.5))),
-                  Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.darkGray)),
-                ],
-              ),
-            ),
-            Icon(Icons.expand_more_rounded, color: AppTheme.darkGray.withOpacity(0.4), size: 20),
+            Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.darkGray)),
+            if (required) ...[
+              const SizedBox(width: 3),
+              const Text('*', style: TextStyle(color: AppTheme.redPink, fontSize: 13)),
+            ],
           ],
         ),
-      ),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: ctrl,
+          maxLines: maxLines,
+          keyboardType: keyboardType,
+          style: const TextStyle(fontSize: 14, color: AppTheme.darkGray, fontFamily: 'Lato'),
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: TextStyle(fontSize: 13, color: AppTheme.darkGray.withOpacity(0.5), fontFamily: 'Lato'),
+            prefixIcon: Icon(icon, size: 18, color: AppTheme.darkGray.withOpacity(0.4)),
+            filled: true,
+            fillColor: const Color(0xFFF8F9FC),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppTheme.darkGray.withOpacity(0.12))),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppTheme.darkGray.withOpacity(0.12))),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.redPink, width: 1.5)),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _editDateTile(String label, DateTime? dateTime, VoidCallback onTap, Color color) {
+  Widget _editDropdownTile(String label, String value, IconData icon, VoidCallback onTap, {bool required = false}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.darkGray)),
+            if (required) ...[
+              const SizedBox(width: 3),
+              const Text('*', style: TextStyle(color: AppTheme.redPink, fontSize: 13)),
+            ],
+          ],
+        ),
+        const SizedBox(height: 6),
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F9FC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.darkGray.withOpacity(0.12)),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: 18, color: AppTheme.darkGray.withOpacity(0.4)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label, style: TextStyle(fontSize: 11, color: AppTheme.darkGray.withOpacity(0.5))),
+                      Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.darkGray)),
+                    ],
+                  ),
+                ),
+                Icon(Icons.expand_more_rounded, color: AppTheme.darkGray.withOpacity(0.4), size: 20),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _editDateTile(String label, DateTime? dateTime, VoidCallback onTap, Color color, {bool required = false}) {
     final String display = dateTime != null ? DateFormat('MMMM d, yyyy hh:mm a').format(dateTime) : 'Tap to select';
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.04),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.18)),
-        ),
-        child: Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Icon(Icons.calendar_today_outlined, size: 18, color: color),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label, style: TextStyle(fontSize: 11, color: color.withOpacity(0.7))),
-                  Text(display, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: dateTime != null ? AppTheme.darkGray : AppTheme.darkGray.withOpacity(0.4))),
-                ],
-              ),
-            ),
-            Icon(Icons.edit_calendar_rounded, color: color.withOpacity(0.5), size: 18),
+            Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.darkGray)),
+            if (required) ...[
+              const SizedBox(width: 3),
+              const Text('*', style: TextStyle(color: AppTheme.redPink, fontSize: 13)),
+            ],
           ],
         ),
-      ),
+        const SizedBox(height: 6),
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.04),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: color.withOpacity(0.18)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.calendar_today_outlined, size: 18, color: color),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label, style: TextStyle(fontSize: 11, color: color.withOpacity(0.7))),
+                      Text(display, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: dateTime != null ? AppTheme.darkGray : AppTheme.darkGray.withOpacity(0.4))),
+                    ],
+                  ),
+                ),
+                Icon(Icons.edit_calendar_rounded, color: color.withOpacity(0.5), size: 18),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 

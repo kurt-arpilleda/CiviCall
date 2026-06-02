@@ -140,10 +140,56 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
     );
   }
 
-  bool _validateCurrentPage() {
-    return _formKeys[_currentPage].currentState?.validate() ?? true;
+  bool _validatePage1() {
+    if (_pickedImage == null) {
+      _showError('Please upload an engagement photo.');
+      return false;
+    }
+    if (_selectedCategoryId == null) {
+      _showError('Please select a category.');
+      return false;
+    }
+    if (_titleCtrl.text.trim().isEmpty) {
+      _showError('Engagement title is required.');
+      return false;
+    }
+    if (_descCtrl.text.trim().isEmpty) {
+      _showError('Description is required.');
+      return false;
+    }
+    if (_objectiveCtrl.text.trim().isEmpty) {
+      _showError('Objective is required.');
+      return false;
+    }
+    if (_instructionCtrl.text.trim().isEmpty) {
+      _showError('Instructions are required.');
+      return false;
+    }
+    return true;
   }
-  bool _validateDates() {
+
+  bool _validatePage2() {
+    if (_locationAddressCtrl.text.trim().isEmpty) {
+      _showError('Location address is required.');
+      return false;
+    }
+    if (_latitude == null || _longitude == null) {
+      _showError('Please pin the location on the map.');
+      return false;
+    }
+    if (_selectedCampusIds.isEmpty) {
+      _showError('Please select at least one target campus.');
+      return false;
+    }
+    final target = int.tryParse(_targetParticipantsCtrl.text.trim());
+    if (target == null || target <= 0) {
+      _showError('Target participants must be a positive number.');
+      return false;
+    }
+    return true;
+  }
+
+  bool _validatePage3() {
     if (_startDate == null) {
       _showError('Please select a start date and time.');
       return false;
@@ -160,12 +206,34 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
       _showError('End date & time must be after the start date & time.');
       return false;
     }
+    final points = int.tryParse(_activityPointsCtrl.text.trim());
+    if (points == null || points <= 0) {
+      _showError('Activity points must be a positive number.');
+      return false;
+    }
     return true;
   }
-  void _nextPage() {
-    if (!_validateCurrentPage()) return;
 
-    if (_currentPage == 2 && !_validateDates()) return;
+  bool _validatePage4() {
+    if (_facilitatorNameCtrl.text.trim().isEmpty) {
+      _showError('Facilitator name is required.');
+      return false;
+    }
+    if (_facilitatorContactCtrl.text.trim().isEmpty) {
+      _showError('Facilitator contact is required.');
+      return false;
+    }
+    return true;
+  }
+
+  void _nextPage() {
+    bool isValid = false;
+    if (_currentPage == 0) isValid = _validatePage1();
+    else if (_currentPage == 1) isValid = _validatePage2();
+    else if (_currentPage == 2) isValid = _validatePage3();
+    else if (_currentPage == 3) isValid = _validatePage4();
+
+    if (!isValid) return;
 
     if (_currentPage < _totalPages - 1) _goToPage(_currentPage + 1);
   }
@@ -318,7 +386,6 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
     if (time == null || !mounted) return;
     final combined = DateTime(date.year, date.month, date.day, time.hour, time.minute);
 
-    // Validation
     if (isStart) {
       if (combined.isBefore(now)) {
         _showError('Start date & time cannot be in the past.');
@@ -515,8 +582,10 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
   }
 
   Future<void> _submitEngagement() async {
-    if (!_validateCurrentPage()) return;
-    if (!_validateDates()) return;
+    if (!_validatePage1()) return;
+    if (!_validatePage2()) return;
+    if (!_validatePage3()) return;
+    if (!_validatePage4()) return;
     if (_isSubmitting) return;
     setState(() => _isSubmitting = true);
 
@@ -878,6 +947,8 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
                     icon: Icons.flag_outlined,
                     hint: 'What is the goal of this engagement?',
                     maxLines: 2,
+                    validator: (v) => (v?.trim().isEmpty ?? true) ? 'Objective is required' : null,
+                    required: true,
                   ),
                   _buildDivider(),
                   _buildTextField(
@@ -886,6 +957,8 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
                     icon: Icons.list_alt_rounded,
                     hint: 'Provide step-by-step instructions for participants...',
                     maxLines: 3,
+                    validator: (v) => (v?.trim().isEmpty ?? true) ? 'Instructions are required' : null,
+                    required: true,
                   ),
                 ],
               ),
@@ -935,7 +1008,12 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
                     hint: 'How many volunteers needed?',
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    validator: (v) => (v?.trim().isEmpty ?? true) ? 'Required' : null,
+                    validator: (v) {
+                      if (v?.trim().isEmpty ?? true) return 'Required';
+                      final val = int.tryParse(v!.trim());
+                      if (val == null || val <= 0) return 'Must be a positive number';
+                      return null;
+                    },
                     required: true,
                   ),
                 ],
@@ -986,7 +1064,12 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
                 hint: 'Points earned after participating',
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                validator: (v) => (v?.trim().isEmpty ?? true) ? 'Required' : null,
+                validator: (v) {
+                  if (v?.trim().isEmpty ?? true) return 'Required';
+                  final val = int.tryParse(v!.trim());
+                  if (val == null || val <= 0) return 'Must be a positive number';
+                  return null;
+                },
                 required: true,
               ),
             ),
@@ -1160,7 +1243,7 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
             ),
             const SizedBox(height: 4),
             Text(
-              'Optional — tap to capture or choose from gallery',
+              'Required — tap to capture or choose from gallery',
               style: TextStyle(fontSize: 12, color: AppTheme.darkGray.withOpacity(0.45)),
             ),
           ],
@@ -1331,6 +1414,8 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
               'Pin on Map',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.darkGray),
             ),
+            const SizedBox(width: 3),
+            const Text('*', style: TextStyle(color: AppTheme.redPink, fontSize: 13)),
             const SizedBox(width: 6),
             if (hasPinned)
               Container(
@@ -1786,6 +1871,7 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
     }
     return rowContent;
   }
+
   Widget _buildBottomNav() {
     final isLastPage = _currentPage == _totalPages - 1;
     return Container(
