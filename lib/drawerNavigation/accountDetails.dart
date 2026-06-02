@@ -137,11 +137,13 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
     final rawUserType = u['userType'] != null ? (u['userType'] as num).toInt() : null;
     _selectedUserTypeId = (_userTypes.any((t) => t['id'] == rawUserType)) ? rawUserType : null;
     final rawGender = u['gender'] != null ? (u['gender'] as num).toInt() : null;
-    _selectedGender = (rawGender == 0 || rawGender == 1) ? rawGender : null;
-    if (u['birthDay'] != null && u['birthDay'].toString().isNotEmpty) {
+    _selectedGender = (rawGender == 0 || rawGender == 1 || rawGender == 2) ? rawGender : null;
+    if (u['birthDay'] != null && u['birthDay'].toString().isNotEmpty && u['birthDay'].toString() != '0000-00-00') {
       try {
         _selectedBirthDay = DateTime.parse(u['birthDay'].toString());
       } catch (_) {}
+    } else {
+      _selectedBirthDay = null;
     }
   }
 
@@ -352,12 +354,20 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
 
   String _formatDate(String? raw) {
     if (raw == null || raw.isEmpty) return '—';
+    if (raw == '0000-00-00') return 'Birth date not found';
     try {
       final dt = DateTime.parse(raw);
       return DateFormat('MMMM d, yyyy').format(dt);
     } catch (_) {
       return raw;
     }
+  }
+
+  String _formatGender(int? gender) {
+    if (gender == 0) return 'Male';
+    if (gender == 1) return 'Female';
+    if (gender == 2) return 'Not Specified';
+    return '—';
   }
 
   ImageProvider? _resolveProfileImage() {
@@ -620,9 +630,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
             _buildInfoTile(
               Icons.wc_outlined,
               'Gender',
-              u['gender'] != null
-                  ? (u['gender'].toString() == '0' ? 'Male' : 'Female')
-                  : null,
+              _formatGender(u['gender'] as int?),
             ),
           ]),
           const SizedBox(height: 16),
@@ -768,6 +776,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                 items: const [
                   DropdownMenuItem(value: 0, child: Text('Male')),
                   DropdownMenuItem(value: 1, child: Text('Female')),
+                  DropdownMenuItem(value: 2, child: Text('Not Specified')),
                 ],
                 onChanged: (v) => setState(() => _selectedGender = v),
               ),
