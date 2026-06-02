@@ -143,9 +143,30 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
   bool _validateCurrentPage() {
     return _formKeys[_currentPage].currentState?.validate() ?? true;
   }
-
+  bool _validateDates() {
+    if (_startDate == null) {
+      _showError('Please select a start date and time.');
+      return false;
+    }
+    if (_startDate!.isBefore(DateTime.now())) {
+      _showError('Start date & time must be in the future.');
+      return false;
+    }
+    if (_endDate == null) {
+      _showError('Please select an end date and time.');
+      return false;
+    }
+    if (_endDate!.isBefore(_startDate!)) {
+      _showError('End date & time must be after the start date & time.');
+      return false;
+    }
+    return true;
+  }
   void _nextPage() {
     if (!_validateCurrentPage()) return;
+
+    if (_currentPage == 2 && !_validateDates()) return;
+
     if (_currentPage < _totalPages - 1) _goToPage(_currentPage + 1);
   }
 
@@ -274,7 +295,7 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
     final date = await showDatePicker(
       context: context,
       initialDate: initDate,
-      firstDate: now,
+      firstDate: isStart ? now : (_startDate ?? now),
       lastDate: DateTime(now.year + 5),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
@@ -296,14 +317,34 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
     );
     if (time == null || !mounted) return;
     final combined = DateTime(date.year, date.month, date.day, time.hour, time.minute);
-    setState(() {
-      if (isStart) {
+
+    // Validation
+    if (isStart) {
+      if (combined.isBefore(now)) {
+        _showError('Start date & time cannot be in the past.');
+        return;
+      }
+      if (_endDate != null && combined.isAfter(_endDate!)) {
+        _showError('Start date must be before the end date.');
+        return;
+      }
+      setState(() {
         _startDate = combined;
         if (_endDate != null && _endDate!.isBefore(combined)) _endDate = null;
-      } else {
-        _endDate = combined;
+      });
+    } else {
+      if (_startDate == null) {
+        _showError('Please select start date & time first.');
+        return;
       }
-    });
+      if (combined.isBefore(_startDate!)) {
+        _showError('End date & time must be after the start date & time.');
+        return;
+      }
+      setState(() {
+        _endDate = combined;
+      });
+    }
   }
 
   Future<void> _openLocationPicker() async {
@@ -475,6 +516,7 @@ class _AddEngagementScreenState extends State<AddEngagementScreen>
 
   Future<void> _submitEngagement() async {
     if (!_validateCurrentPage()) return;
+    if (!_validateDates()) return;
     if (_isSubmitting) return;
     setState(() => _isSubmitting = true);
 
