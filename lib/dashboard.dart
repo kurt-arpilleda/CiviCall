@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:civicall/addDrawer/addEngagement.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,7 +18,8 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  final GlobalKey<EngagementFeedScreenState> _engagementFeedKey = GlobalKey<EngagementFeedScreenState>();
+  final GlobalKey<EngagementFeedScreenState> _engagementFeedKey =
+  GlobalKey<EngagementFeedScreenState>();
 
   static const List<String> _pageTitles = [
     'Home',
@@ -91,7 +93,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const ReportProblemScreen()),
+                      MaterialPageRoute(
+                          builder: (_) => const ReportProblemScreen()),
                     );
                   },
                 ),
@@ -101,7 +104,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   color: const Color(0xFF2E7D5E),
                   onTap: () async {
                     Navigator.pop(context);
-                    await Navigator.push(context, MaterialPageRoute(builder: (_) => const AddEngagementScreen()));
+                    await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const AddEngagementScreen()));
                     _engagementFeedKey.currentState?.refresh();
                   },
                 ),
@@ -174,6 +180,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final pageIndex = _navIndexToPageIndex(_selectedIndex);
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final isGestureNavigation = bottomPadding > 20;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -218,53 +226,69 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _pages[3],
           ],
         ),
-        bottomNavigationBar: _buildBottomNav(),
-        floatingActionButton: _buildCenterFab(),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+        bottomNavigationBar: _buildBottomNav(isGestureNavigation),
+        floatingActionButton: _buildTikTokFab(),
+        floatingActionButtonLocation: isGestureNavigation
+            ? FloatingActionButtonLocation.centerDocked
+            : CustomFloatingActionButtonLocation(),
       ),
     );
   }
 
-  Widget _buildBottomNav() {
-    return BottomAppBar(
-      color: AppTheme.darkGray,
-      elevation: 12,
-      shadowColor: Colors.black.withOpacity(0.3),
-      notchMargin: 8,
-      shape: const CircularNotchedRectangle(),
-      padding: EdgeInsets.zero,
-      child: SizedBox(
-        height: 56,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildNavItem(
-              navIndex: 0,
-              icon: Icons.home_outlined,
-              activeIcon: Icons.home_rounded,
-              label: 'Home',
+  Widget _buildBottomNav(bool isGestureNavigation) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final navBarHeight = isGestureNavigation ? 64.0 : 56.0;
+    final extraBottomPadding = isGestureNavigation ? 8.0 : 0.0;
+
+    return Container(
+      height: navBarHeight + bottomPadding,
+      decoration: BoxDecoration(
+        color: AppTheme.darkGray,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          SizedBox(
+            height: navBarHeight,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildNavItem(
+                  navIndex: 0,
+                  icon: Icons.home_outlined,
+                  activeIcon: Icons.home_rounded,
+                  label: 'Home',
+                ),
+                _buildNavItem(
+                  navIndex: 1,
+                  icon: Icons.info_outline_rounded,
+                  activeIcon: Icons.info_rounded,
+                  label: 'Info',
+                ),
+                const SizedBox(width: 52),
+                _buildNavItem(
+                  navIndex: 3,
+                  icon: Icons.forum_outlined,
+                  activeIcon: Icons.forum_rounded,
+                  label: 'Forum',
+                ),
+                _buildNavItem(
+                  navIndex: 4,
+                  icon: Icons.notifications_outlined,
+                  activeIcon: Icons.notifications_rounded,
+                  label: 'Alerts',
+                ),
+              ],
             ),
-            _buildNavItem(
-              navIndex: 1,
-              icon: Icons.info_outline_rounded,
-              activeIcon: Icons.info_rounded,
-              label: 'Info',
-            ),
-            const SizedBox(width: 56),
-            _buildNavItem(
-              navIndex: 3,
-              icon: Icons.forum_outlined,
-              activeIcon: Icons.forum_rounded,
-              label: 'Forum',
-            ),
-            _buildNavItem(
-              navIndex: 4,
-              icon: Icons.notifications_outlined,
-              activeIcon: Icons.notifications_rounded,
-              label: 'Alerts',
-            ),
-          ],
-        ),
+          ),
+          if (isGestureNavigation) SizedBox(height: extraBottomPadding),
+        ],
       ),
     );
   }
@@ -278,11 +302,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final bool isActive = _selectedIndex == navIndex;
     return InkWell(
       onTap: () => _onTabTapped(navIndex),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(8),
       splashColor: AppTheme.white.withOpacity(0.08),
       highlightColor: AppTheme.white.withOpacity(0.05),
       child: SizedBox(
-        width: 64,
+        width: 56,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
@@ -292,21 +316,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Icon(
                 isActive ? activeIcon : icon,
                 key: ValueKey(isActive),
-                color: isActive
-                    ? AppTheme.redPink
-                    : AppTheme.white.withOpacity(0.6),
-                size: 24,
+                color:
+                isActive ? AppTheme.redPink : AppTheme.white.withOpacity(0.5),
+                size: 22,
               ),
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 2),
             Text(
               label,
               style: TextStyle(
-                fontSize: 11,
-                fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
-                color: isActive
-                    ? AppTheme.redPink
-                    : AppTheme.white.withOpacity(0.6),
+                fontSize: 10,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                color:
+                isActive ? AppTheme.redPink : AppTheme.white.withOpacity(0.5),
                 letterSpacing: 0.1,
               ),
             ),
@@ -316,36 +338,90 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildCenterFab() {
+  Widget _buildTikTokFab() {
     return GestureDetector(
       onTap: () => _showAddSheet(),
-      child: Container(
-        width: 58,
-        height: 58,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFE84757), AppTheme.redPink],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+      child: CustomPaint(
+        painter: TikTokFabPainter(),
+        child: Container(
+          width: 56,
+          height: 56,
+          alignment: Alignment.center,
+          child: const Icon(
+            Icons.add_rounded,
+            color: AppTheme.white,
+            size: 28,
           ),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.redPink.withOpacity(0.4),
-              blurRadius: 14,
-              spreadRadius: 1,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: const Icon(
-          Icons.add_rounded,
-          color: AppTheme.white,
-          size: 30,
         ),
       ),
     );
   }
+}
+
+class TikTokFabPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFFE84757), Color(0xFFE53935)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
+      ..style = PaintingStyle.fill;
+
+    final shadowPaint = Paint()
+      ..color = const Color(0xFFE53935).withOpacity(0.4)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+
+    final path = Path();
+    final w = size.width;
+    final h = size.height;
+    final radius = 14.0;
+    final notchDepth = 6.0;
+    final cornerRadius = 4.0;
+
+    path.moveTo(0, cornerRadius);
+    path.quadraticBezierTo(0, 0, cornerRadius, 0);
+    path.lineTo(w - cornerRadius, 0);
+    path.quadraticBezierTo(w, 0, w, cornerRadius);
+    path.lineTo(w, h - radius);
+    path.quadraticBezierTo(w, h - radius + notchDepth, w - notchDepth, h - radius + notchDepth * 1.5);
+    path.lineTo(w / 2 + radius * 0.8, h);
+    path.lineTo(w / 2 - radius * 0.8, h);
+    path.lineTo(notchDepth, h - radius + notchDepth * 1.5);
+    path.quadraticBezierTo(0, h - radius + notchDepth, 0, h - radius);
+    path.close();
+
+    canvas.drawPath(path, shadowPaint);
+    canvas.drawPath(path, paint);
+
+    final borderPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..color = Colors.white.withOpacity(0.15)
+      ..strokeWidth = 1.5;
+
+    canvas.drawPath(path, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class CustomFloatingActionButtonLocation extends FloatingActionButtonLocation {
+  @override
+  Offset getOffset(ScaffoldPrelayoutGeometry scaffoldGeometry) {
+    final double fabX = (scaffoldGeometry.scaffoldSize.width -
+        scaffoldGeometry.floatingActionButtonSize.width) /
+        2;
+    final double fabY = scaffoldGeometry.scaffoldSize.height -
+        scaffoldGeometry.floatingActionButtonSize.height -
+        scaffoldGeometry.minInsets.bottom -
+        28;
+    return Offset(fabX, fabY);
+  }
+
+  @override
+  String toString() => 'CustomFloatingActionButtonLocation';
 }
 
 class _DummyPage extends StatelessWidget {
@@ -367,8 +443,8 @@ class _DummyPage extends StatelessWidget {
               color: AppTheme.redPink.withOpacity(0.08),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon,
-                size: 38, color: AppTheme.redPink.withOpacity(0.6)),
+            child:
+            Icon(icon, size: 38, color: AppTheme.redPink.withOpacity(0.6)),
           ),
           const SizedBox(height: 16),
           Text(
