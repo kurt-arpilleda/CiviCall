@@ -12,7 +12,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 class AutoUpdate {
-  static const String apiUrl = "https://192.168.1.56/CiviCall/";
+  static const String apiUrl = "https://192.168.1.58/CiviCall/";
   static const String versionPath = "LatestVersionAPK/version.json";
   static const String apkPathPrefix = "LatestVersionAPK/";
 
