@@ -289,7 +289,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           actions: [
             IconButton(
               icon: const Icon(Icons.search_rounded, size: 24),
-              onPressed: () {},
+              onPressed: () {
+                if (_selectedIndex == 0 || _navIndexToPageIndex(_selectedIndex) == 0) {
+                  showSearch(
+                    context: context,
+                    delegate: EngagementSearchDelegate(
+                      engagements: _engagementFeedKey.currentState?.engagements ?? [],
+                      currentUserId: _engagementFeedKey.currentState?.currentUserId,
+                      onRefresh: () => _engagementFeedKey.currentState?.refresh(),
+                    ),
+                  );
+                }
+              },
             ),
           ],
         ),

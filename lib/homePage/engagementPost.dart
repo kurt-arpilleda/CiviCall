@@ -15,10 +15,10 @@ class EngagementFeedScreen extends StatefulWidget {
 
 class EngagementFeedScreenState extends State<EngagementFeedScreen> {
   final ApiService _apiService = ApiService();
-  List<Map<String, dynamic>> _engagements = [];
+  List<Map<String, dynamic>> engagements = [];
   bool _isLoading = true;
   String? _error;
-  int? _currentUserId;
+  int? currentUserId;
 
   @override
   void initState() {
@@ -39,8 +39,8 @@ class EngagementFeedScreenState extends State<EngagementFeedScreen> {
     if (!mounted) return;
     if (res['success'] == true) {
       setState(() {
-        _engagements = List<Map<String, dynamic>>.from(res['engagements'] ?? []);
-        _currentUserId = res['currentUserId'] as int?;
+        engagements = List<Map<String, dynamic>>.from(res['engagements'] ?? []);
+        currentUserId = res['currentUserId'] as int?;
         _isLoading = false;
       });
     } else {
@@ -55,17 +55,17 @@ class EngagementFeedScreenState extends State<EngagementFeedScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) return _buildSkeletonList();
     if (_error != null) return _buildErrorState();
-    if (_engagements.isEmpty) return _buildEmptyState();
+    if (engagements.isEmpty) return _buildEmptyState();
 
     return RefreshIndicator(
       color: AppTheme.redPink,
       onRefresh: _loadEngagements,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-        itemCount: _engagements.length,
+        itemCount: engagements.length,
         itemBuilder: (_, i) => _EngagementCard(
-          engagement: _engagements[i],
-          currentUserId: _currentUserId,
+          engagement: engagements[i],
+          currentUserId: currentUserId,
           onRefresh: _loadEngagements,
         ),
       ),
@@ -538,6 +538,107 @@ class _EngagementCardSkeleton extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+class EngagementSearchDelegate extends SearchDelegate<void> {
+  final List<Map<String, dynamic>> engagements;
+  final int? currentUserId;
+  final VoidCallback onRefresh;
+
+  EngagementSearchDelegate({
+    required this.engagements,
+    required this.currentUserId,
+    required this.onRefresh,
+  });
+
+  @override
+  String get searchFieldLabel => 'Search engagements...';
+
+  @override
+  ThemeData appBarTheme(BuildContext context) {
+    return Theme.of(context).copyWith(
+      appBarTheme: const AppBarTheme(
+        backgroundColor: AppTheme.redPink,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        hintStyle: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 16),
+        border: InputBorder.none,
+      ),
+      textTheme: const TextTheme(
+        titleLarge: TextStyle(color: Colors.white, fontSize: 16),
+      ),
+    );
+  }
+
+  @override
+  List<Widget> buildActions(BuildContext context) {
+    return [
+      if (query.isNotEmpty)
+        IconButton(
+          icon: const Icon(Icons.clear_rounded),
+          onPressed: () => query = '',
+        ),
+    ];
+  }
+
+  @override
+  Widget buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back_rounded),
+      onPressed: () => close(context, null),
+    );
+  }
+
+  List<Map<String, dynamic>> get _filtered {
+    if (query.trim().isEmpty) return engagements;
+    final q = query.trim().toLowerCase();
+    return engagements.where((e) {
+      final title = (e['titleEngagement'] as String? ?? '').toLowerCase();
+      final category = (e['categoryName'] as String? ?? '').toLowerCase();
+      final location = (e['locationAddress'] as String? ?? '').toLowerCase();
+      return title.contains(q) || category.contains(q) || location.contains(q);
+    }).toList();
+  }
+
+  @override
+  Widget buildResults(BuildContext context) => _buildList(context);
+
+  @override
+  Widget buildSuggestions(BuildContext context) => _buildList(context);
+
+  Widget _buildList(BuildContext context) {
+    final results = _filtered;
+    if (results.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off_rounded, size: 52, color: AppTheme.darkGray.withOpacity(0.25)),
+            const SizedBox(height: 14),
+            Text(
+              'No engagements found',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.darkGray.withOpacity(0.45)),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Try a different title, category, or location.',
+              style: TextStyle(fontSize: 13, color: AppTheme.darkGray.withOpacity(0.35)),
+            ),
+          ],
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      itemCount: results.length,
+      itemBuilder: (_, i) => _EngagementCard(
+        engagement: results[i],
+        currentUserId: currentUserId,
+        onRefresh: onRefresh,
       ),
     );
   }

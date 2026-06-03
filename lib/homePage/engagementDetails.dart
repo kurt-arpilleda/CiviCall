@@ -8,6 +8,7 @@ import 'package:civicall/googleMap.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:civicall/drawerNavigation/userVerification.dart';
 
 class EngagementDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> engagement;
@@ -30,6 +31,9 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
   late Map<String, dynamic> _engagement;
   bool _isEditing = false;
   bool _isSaving = false;
+  bool _isJoined = false;
+  bool _isJoinLoading = true;
+  int _participantCount = 0;
 
   File? _newImage;
   List<Map<String, dynamic>> _categories = [];
@@ -59,8 +63,8 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
     super.initState();
     _engagement = Map<String, dynamic>.from(widget.engagement);
     _loadDropdowns();
+    _loadParticipantStatus();
   }
-
   @override
   void dispose() {
     _titleCtrl.dispose();
@@ -89,7 +93,204 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
       });
     }
   }
+  Future<void> _loadParticipantStatus() async {
+    final engagementId = _engagement['engagementId'] as int?;
+    if (engagementId == null) return;
+    final res = await _apiService.getParticipants(engagementId: engagementId);
+    if (mounted) {
+      setState(() {
+        _isJoined = (res['isJoined'] as int? ?? 0) == 1;
+        _participantCount = res['total'] as int? ?? 0;
+        _isJoinLoading = false;
+      });
+    }
+  }
 
+  Future<void> _handleJoin(BuildContext context) async {
+    final userRes = await _apiService.getUserData();
+    if (!mounted) return;
+    final isVerified = userRes['success'] == true && (userRes['user']?['isVerified'] ?? 0) == 1;
+    if (!isVerified) {
+      _showUnverifiedJoinDialog(context);
+      return;
+    }
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64, height: 64,
+              decoration: BoxDecoration(color: const Color(0xFF2E7D5E).withOpacity(0.1), shape: BoxShape.circle),
+              child: const Icon(Icons.volunteer_activism_rounded, color: Color(0xFF2E7D5E), size: 32),
+            ),
+            const SizedBox(height: 16),
+            const Text('Join Engagement', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.darkGray), textAlign: TextAlign.center),
+            const SizedBox(height: 10),
+            Text(
+              'Do you want to participate in "${_engagement['titleEngagement'] ?? ''}"?',
+              style: TextStyle(fontSize: 13.5, color: AppTheme.darkGray.withOpacity(0.65), height: 1.5),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel', style: TextStyle(color: AppTheme.darkGray.withOpacity(0.5))),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2E7D5E),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Join Now'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    setState(() => _isJoinLoading = true);
+    final res = await _apiService.joinEngagement(engagementId: _engagement['engagementId'] as int);
+    if (!mounted) return;
+    if (res['message'] == 'not_verified') {
+      setState(() => _isJoinLoading = false);
+      _showUnverifiedJoinDialog(context);
+      return;
+    }
+    if (res['success'] == true) {
+      setState(() {
+        _isJoined = true;
+        _participantCount++;
+        _isJoinLoading = false;
+      });
+      _showSnack('Successfully joined the engagement!');
+    } else {
+      setState(() => _isJoinLoading = false);
+      _showSnack(res['message'] ?? 'Failed to join.', isError: true);
+    }
+  }
+
+  Future<void> _handleCancel(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64, height: 64,
+              decoration: BoxDecoration(color: AppTheme.redPink.withOpacity(0.1), shape: BoxShape.circle),
+              child: const Icon(Icons.cancel_outlined, color: AppTheme.redPink, size: 32),
+            ),
+            const SizedBox(height: 16),
+            const Text('Cancel Participation', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.darkGray), textAlign: TextAlign.center),
+            const SizedBox(height: 10),
+            Text(
+              'Are you sure you want to cancel your participation in "${_engagement['titleEngagement'] ?? ''}"?',
+              style: TextStyle(fontSize: 13.5, color: AppTheme.darkGray.withOpacity(0.65), height: 1.5),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('No', style: TextStyle(color: AppTheme.darkGray.withOpacity(0.5))),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.redPink,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Yes, Cancel'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    setState(() => _isJoinLoading = true);
+    final res = await _apiService.cancelEngagement(engagementId: _engagement['engagementId'] as int);
+    if (!mounted) return;
+    if (res['success'] == true) {
+      setState(() {
+        _isJoined = false;
+        _participantCount = (_participantCount - 1).clamp(0, 9999);
+        _isJoinLoading = false;
+      });
+      _showSnack('Participation cancelled.');
+    } else {
+      setState(() => _isJoinLoading = false);
+      _showSnack(res['message'] ?? 'Failed to cancel.', isError: true);
+    }
+  }
+
+  void _showUnverifiedJoinDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64, height: 64,
+              decoration: BoxDecoration(color: AppTheme.redPink.withOpacity(0.1), shape: BoxShape.circle),
+              child: const Icon(Icons.verified_user_outlined, color: AppTheme.redPink, size: 32),
+            ),
+            const SizedBox(height: 16),
+            const Text('Verification Required', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.darkGray), textAlign: TextAlign.center),
+            const SizedBox(height: 10),
+            Text(
+              'You need to verify your account before you can join an engagement.',
+              style: TextStyle(fontSize: 13.5, color: AppTheme.darkGray.withOpacity(0.65), height: 1.5),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Maybe Later', style: TextStyle(color: AppTheme.darkGray.withOpacity(0.5))),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const UserVerificationScreen()));
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.redPink,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Verify Now'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showParticipantsList(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ParticipantsBottomSheet(
+        engagementId: _engagement['engagementId'] as int,
+        apiService: _apiService,
+      ),
+    );
+  }
   void _enterEditMode() {
     _titleCtrl.text = _engagement['titleEngagement'] ?? '';
     _descCtrl.text = _engagement['description'] ?? '';
@@ -723,11 +924,16 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
             const SizedBox(height: 16),
             _buildOwnerNotice(),
           ],
+          if (isVerified) ...[
+            const SizedBox(height: 12),
+            _buildParticipantsTile(context),
+            const SizedBox(height: 24),
+            if (!isOwner) _buildJoinCancelButton(context),
+          ],
         ],
       ),
     );
   }
-
   Widget _buildCategoryAndTitle() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -948,7 +1154,89 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
       ),
     );
   }
+  Widget _buildParticipantsTile(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _showParticipantsList(context),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 14, offset: const Offset(0, 4))],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(color: const Color(0xFF1565C0).withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.group_rounded, color: Color(0xFF1565C0), size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Participants', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.darkGray)),
+                    const SizedBox(height: 2),
+                    _isJoinLoading
+                        ? Text('Loading...', style: TextStyle(fontSize: 12, color: AppTheme.darkGray.withOpacity(0.45)))
+                        : Text('$_participantCount joined', style: TextStyle(fontSize: 12, color: AppTheme.darkGray.withOpacity(0.55))),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: AppTheme.darkGray.withOpacity(0.35), size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
+  Widget _buildJoinCancelButton(BuildContext context) {
+    if (_isJoinLoading) {
+      return Container(
+        width: double.infinity,
+        height: 52,
+        decoration: BoxDecoration(
+          color: Colors.grey.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppTheme.redPink))),
+      );
+    }
+    if (_isJoined) {
+      return SizedBox(
+        width: double.infinity,
+        height: 52,
+        child: OutlinedButton.icon(
+          onPressed: () => _handleCancel(context),
+          icon: const Icon(Icons.cancel_outlined, size: 20),
+          label: const Text('Cancel Participation', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppTheme.redPink,
+            side: const BorderSide(color: AppTheme.redPink, width: 1.5),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+        ),
+      );
+    }
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton.icon(
+        onPressed: () => _handleJoin(context),
+        icon: const Icon(Icons.volunteer_activism_rounded, size: 20),
+        label: const Text('Join Now', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2E7D5E),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+      ),
+    );
+  }
   Widget _buildOwnerNotice() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1288,6 +1576,156 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+class _ParticipantsBottomSheet extends StatefulWidget {
+  final int engagementId;
+  final ApiService apiService;
+
+  const _ParticipantsBottomSheet({required this.engagementId, required this.apiService});
+
+  @override
+  State<_ParticipantsBottomSheet> createState() => _ParticipantsBottomSheetState();
+}
+
+class _ParticipantsBottomSheetState extends State<_ParticipantsBottomSheet> {
+  bool _loading = true;
+  List<Map<String, dynamic>> _participants = [];
+  int _total = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final res = await widget.apiService.getParticipants(engagementId: widget.engagementId);
+    if (mounted) {
+      setState(() {
+        _participants = List<Map<String, dynamic>>.from(res['participants'] ?? []);
+        _total = res['total'] as int? ?? 0;
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.55,
+      minChildSize: 0.35,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (_, scrollCtrl) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(topLeft: Radius.circular(28), topRight: Radius.circular(28)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40, height: 4,
+              decoration: BoxDecoration(color: AppTheme.darkGray.withOpacity(0.15), borderRadius: BorderRadius.circular(2)),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 38, height: 38,
+                    decoration: BoxDecoration(color: const Color(0xFF1565C0).withOpacity(0.1), borderRadius: BorderRadius.circular(11)),
+                    child: const Icon(Icons.group_rounded, color: Color(0xFF1565C0), size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Text('Participants', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.darkGray)),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(color: const Color(0xFF1565C0).withOpacity(0.09), borderRadius: BorderRadius.circular(20)),
+                    child: Text('$_total joined', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF1565C0))),
+                  ),
+                ],
+              ),
+            ),
+            Divider(height: 1, color: AppTheme.darkGray.withOpacity(0.07)),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator(color: AppTheme.redPink, strokeWidth: 2))
+                  : _participants.isEmpty
+                  ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.group_off_rounded, size: 46, color: AppTheme.darkGray.withOpacity(0.2)),
+                    const SizedBox(height: 12),
+                    Text('No participants yet', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.darkGray.withOpacity(0.4))),
+                  ],
+                ),
+              )
+                  : ListView.separated(
+                controller: scrollCtrl,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: _participants.length,
+                separatorBuilder: (_, __) => Divider(height: 1, indent: 72, color: AppTheme.darkGray.withOpacity(0.06)),
+                itemBuilder: (_, i) {
+                  final p = _participants[i];
+                  final photoUrl = p['photo_url'] as String?;
+                  final name = '${p['firstName'] ?? ''} ${p['lastName'] ?? ''}'.trim();
+                  final campus = p['campusName'] as String? ?? '—';
+                  ImageProvider? img;
+                  if (photoUrl != null && photoUrl.isNotEmpty) {
+                    if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
+                      img = NetworkImage(photoUrl);
+                    } else {
+                      img = NetworkImage('${ApiService.apiUrl}profileImage/$photoUrl');
+                    }
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 46, height: 46,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppTheme.darkGray.withOpacity(0.1), width: 1.5),
+                            color: AppTheme.redPink.withOpacity(0.08),
+                          ),
+                          child: ClipOval(
+                            child: img != null
+                                ? Image(image: img, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.person_rounded, color: AppTheme.redPink, size: 24))
+                                : const Icon(Icons.person_rounded, color: AppTheme.redPink, size: 24),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(name.isEmpty ? 'Unknown' : name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.darkGray)),
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  Icon(Icons.school_outlined, size: 12, color: AppTheme.darkGray.withOpacity(0.45)),
+                                  const SizedBox(width: 4),
+                                  Text(campus, style: TextStyle(fontSize: 12, color: AppTheme.darkGray.withOpacity(0.55))),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

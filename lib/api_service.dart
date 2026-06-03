@@ -593,6 +593,41 @@ class ApiService {
       return _handleStreamResponse(streamed, body);
     });
   }
+  Future<Map<String, dynamic>> joinEngagement({required int engagementId}) async {
+    return _executeWithRetry(() async {
+      final token = await _secureStorage.read(key: 'authToken') ?? '';
+      final uri = Uri.parse("${apiUrl}civicall_join_engagement.php");
+      final response = await httpClient.post(uri, body: {
+        'authToken': token,
+        'engagementId': engagementId.toString(),
+      }).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
+
+  Future<Map<String, dynamic>> cancelEngagement({required int engagementId}) async {
+    return _executeWithRetry(() async {
+      final token = await _secureStorage.read(key: 'authToken') ?? '';
+      final uri = Uri.parse("${apiUrl}civicall_cancel_engagement.php");
+      final response = await httpClient.post(uri, body: {
+        'authToken': token,
+        'engagementId': engagementId.toString(),
+      }).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
+
+  Future<Map<String, dynamic>> getParticipants({required int engagementId}) async {
+    return _executeWithRetry(() async {
+      final token = await _secureStorage.read(key: 'authToken') ?? '';
+      final uri = Uri.parse("${apiUrl}civicall_get_participants.php");
+      final response = await httpClient.post(uri, body: {
+        'authToken': token,
+        'engagementId': engagementId.toString(),
+      }).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
   Future<void> saveAuthToken(String token) async {
     await _secureStorage.write(key: 'authToken', value: token);
   }
