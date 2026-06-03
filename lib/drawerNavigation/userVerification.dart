@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:civicall/imageViewer.dart';
+import 'package:civicall/drawerNavigation/accountDetails.dart';
 
 class UserVerificationScreen extends StatefulWidget {
   const UserVerificationScreen({Key? key}) : super(key: key);
@@ -21,6 +22,7 @@ class _UserVerificationScreenState extends State<UserVerificationScreen>
   bool _isLoading = true;
   bool _isVerified = false;
   Map<String, dynamic>? _verificationData;
+  Map<String, dynamic>? _userData;
   bool _isUploading = false;
   int? _selectedFileType;
   final List<String> _fileTypes = [
@@ -52,8 +54,8 @@ class _UserVerificationScreenState extends State<UserVerificationScreen>
     setState(() => _isLoading = true);
     final userRes = await _apiService.getUserData();
     if (userRes['success'] == true) {
-      final user = userRes['user'];
-      _isVerified = (user['isVerified'] == 1);
+      _userData = userRes['user'] as Map<String, dynamic>?;
+      _isVerified = (_userData?['isVerified'] == 1);
     }
     final verifRes = await _apiService.getVerificationStatus();
     if (verifRes['success'] == true && verifRes['data'] != null) {
@@ -64,6 +66,10 @@ class _UserVerificationScreenState extends State<UserVerificationScreen>
   }
 
   Future<void> _pickFile() async {
+    if (!_isProfileComplete()) {
+      await _showIncompleteProfileDialog();
+      return;
+    }
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -180,7 +186,93 @@ class _UserVerificationScreenState extends State<UserVerificationScreen>
     }
   }
 
+  bool _isProfileComplete() {
+    if (_userData == null) return false;
+    final firstName = (_userData!['firstName'] ?? '').toString().trim();
+    final middleName = (_userData!['middleName'] ?? '').toString().trim();
+    final lastName = (_userData!['lastName'] ?? '').toString().trim();
+    final birthDay = (_userData!['birthDay'] ?? '').toString().trim();
+    final gender = _userData!['gender'];
+    final campus = _userData!['campusId'] ?? _userData!['campus'];
+    final mobileNum = (_userData!['mobileNum'] ?? '').toString().trim();
+
+    if (firstName.isEmpty) return false;
+    if (middleName.isEmpty) return false;
+    if (lastName.isEmpty) return false;
+    if (birthDay.isEmpty || birthDay == '0000-00-00') return false;
+    if (gender == null || gender == 2) return false;
+    if (campus == null || campus == 0) return false;
+    if (mobileNum.isEmpty) return false;
+    return true;
+  }
+
+  Future<void> _showIncompleteProfileDialog() async {
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppTheme.redPink.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.person_off_outlined, color: AppTheme.redPink, size: 20),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Incomplete Profile',
+                style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.darkGray, fontSize: 16),
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Your profile must be complete before submitting for verification. Please fill in all required information including your name, birthday, gender, campus, and mobile number.',
+          style: TextStyle(color: AppTheme.darkGray, fontSize: 13, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: AppTheme.darkGray.withOpacity(0.6)),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AccountDetailsScreen(
+                    userData: _userData,
+                    onProfileUpdated: _loadData,
+                  ),
+                ),
+              ).then((_) => _loadData());
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.redPink,
+              foregroundColor: AppTheme.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Go to Profile'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _submitVerification() async {
+    if (!_isProfileComplete()) {
+      await _showIncompleteProfileDialog();
+      return;
+    }
     if (_selectedFileType == null) {
       Fluttertoast.showToast(msg: 'Please select a document type', backgroundColor: AppTheme.redPink, textColor: Colors.white);
       return;
