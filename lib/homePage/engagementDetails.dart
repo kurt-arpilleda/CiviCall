@@ -9,6 +9,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:civicall/drawerNavigation/userVerification.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:civicall/imageViewer.dart';
 
 class EngagementDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> engagement;
@@ -566,7 +568,98 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
       ),
     );
   }
+  Widget _buildClickableContactRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    if (value == '—' || value.trim().isEmpty) {
+      return _buildDetailRow(icon, label, value, color);
+    }
 
+    final String trimmed = value.trim();
+    final bool isEmail = trimmed.contains('@') && trimmed.contains('.');
+    final bool isPhone = RegExp(r'^[\d\s\+\(\)\-]+$').hasMatch(trimmed);
+
+    return GestureDetector(
+      onTap: () async {
+        if (isEmail) {
+          final Uri emailUri = Uri(
+            scheme: 'mailto',
+            path: trimmed,
+            queryParameters: {
+              'subject': 'Inquiry from CiviCall App',
+            },
+          );
+          if (await canLaunchUrl(emailUri)) {
+            await launchUrl(emailUri);
+          } else {
+            _showSnack('No email app found', isError: true);
+          }
+        } else if (isPhone) {
+          final Uri phoneUri = Uri(scheme: 'tel', path: trimmed.replaceAll(RegExp(r'\s+'), ''));
+          if (await canLaunchUrl(phoneUri)) {
+            await launchUrl(phoneUri);
+          } else {
+            _showSnack('Unable to make call', isError: true);
+          }
+        } else {
+          _showSnack('No valid contact method detected', isError: true);
+        }
+      },
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 14, color: color),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.darkGray.withOpacity(0.45),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      value,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.darkGray,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.open_in_new_rounded,
+                      size: 14,
+                      color: AppTheme.redPink.withOpacity(0.6),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
   Widget _imageSourceBtn(IconData icon, String label, Color color, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
@@ -916,7 +1009,12 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
           _buildInfoCard(Icons.person_outline_rounded, 'Facilitator', [
             _buildDetailRow(Icons.badge_outlined, 'Name', _engagement['facilitatorName'] ?? '—', AppTheme.darkGray),
             const SizedBox(height: 8),
-            _buildDetailRow(Icons.phone_outlined, 'Contact', _engagement['facilitatorContact'] ?? '—', const Color(0xFF1565C0)),
+            _buildClickableContactRow(
+              icon: Icons.contact_phone_outlined,
+              label: 'Contact',
+              value: _engagement['facilitatorContact'] ?? '—',
+              color: const Color(0xFF1565C0),
+            ),
           ]),
           const SizedBox(height: 12),
           _buildCampusCard(),
@@ -1688,17 +1786,29 @@ class _ParticipantsBottomSheetState extends State<_ParticipantsBottomSheet> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     child: Row(
                       children: [
-                        Container(
-                          width: 46, height: 46,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppTheme.darkGray.withOpacity(0.1), width: 1.5),
-                            color: AppTheme.redPink.withOpacity(0.08),
-                          ),
-                          child: ClipOval(
-                            child: img != null
-                                ? Image(image: img, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.person_rounded, color: AppTheme.redPink, size: 24))
-                                : const Icon(Icons.person_rounded, color: AppTheme.redPink, size: 24),
+                        GestureDetector(
+                          onTap: () {
+                            if (img != null) {
+                              showFullScreenImage(context, img!);
+                            }
+                          },
+                          child: Container(
+                            width: 46,
+                            height: 46,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppTheme.darkGray.withOpacity(0.1), width: 1.5),
+                              color: AppTheme.redPink.withOpacity(0.08),
+                            ),
+                            child: ClipOval(
+                              child: img != null
+                                  ? Image(
+                                image: img!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Icon(Icons.person_rounded, color: AppTheme.redPink, size: 24),
+                              )
+                                  : const Icon(Icons.person_rounded, color: AppTheme.redPink, size: 24),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 14),
