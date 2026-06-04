@@ -928,7 +928,7 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
             const SizedBox(height: 12),
             _buildParticipantsTile(context),
             const SizedBox(height: 24),
-            if (!isOwner) _buildJoinCancelButton(context),
+            _buildJoinCancelButton(context),
           ],
         ],
       ),
