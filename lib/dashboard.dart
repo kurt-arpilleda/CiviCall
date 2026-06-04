@@ -9,6 +9,7 @@ import 'package:civicall/auto_update.dart';
 import 'package:civicall/drawerNavigation/reportProblem.dart';
 import 'package:civicall/homePage/engagementPost.dart';
 import 'package:civicall/api_service.dart';
+import 'package:civicall/information/newsArticles.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -33,7 +34,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   final List<Widget> _pages = const [
     EngagementFeedScreen(),
-    _DummyPage(label: 'Information', icon: Icons.info_outline_rounded),
+    NewsArticlesScreen(),
     _DummyPage(label: 'Forum', icon: Icons.forum_outlined),
     _DummyPage(label: 'Notifications', icon: Icons.notifications_outlined),
   ];
