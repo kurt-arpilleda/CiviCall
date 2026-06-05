@@ -9,6 +9,7 @@ import 'package:civicall/drawerNavigation/userVerification.dart';
 import 'package:civicall/anim/skeletonAnimation.dart';
 import 'package:civicall/imageViewer.dart';
 import 'package:civicall/drawerNavigation/feedBack.dart';
+import 'package:civicall/drawerNavigation/scheduleCalendar.dart';
 
 class AppDrawer extends StatefulWidget {
   const AppDrawer({Key? key}) : super(key: key);
@@ -163,7 +164,13 @@ class _AppDrawerState extends State<AppDrawer> {
                     _buildNavItem(
                       icon: Icons.calendar_month_outlined,
                       label: 'Schedule Calendar',
-                      onTap: () => Navigator.pop(context),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ScheduleCalendarScreen()),
+                        );
+                      },
                     ),
                     _buildNavItem(
                       icon: Icons.feedback_outlined,

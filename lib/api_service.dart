@@ -628,6 +628,19 @@ class ApiService {
       return _handleResponse(response);
     });
   }
+  Future<Map<String, dynamic>> getMySchedule() async {
+    final token = await getAuthToken();
+    if (token == null) return {'success': false, 'message': 'No auth token'};
+    try {
+      final response = await http.post(
+        Uri.parse('${apiUrl}civicall_get_my_schedule.php'),
+        body: {'authToken': token},
+      );
+      return json.decode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
   Future<void> saveAuthToken(String token) async {
     await _secureStorage.write(key: 'authToken', value: token);
   }
