@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:civicall/theme/app_theme.dart';
 import 'package:civicall/api_service.dart';
+import 'package:civicall/homePage/engagementDetails.dart';
+import 'package:civicall/imageViewer.dart';
 import 'package:intl/intl.dart';
 
 class ScheduleCalendarScreen extends StatefulWidget {
@@ -16,6 +18,7 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
   bool _isLoading = true;
   DateTime _focusedMonth = DateTime.now();
   DateTime? _selectedDay;
+  int? _currentUserId;
 
   @override
   void initState() {
@@ -26,10 +29,14 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
   Future<void> _loadSchedules() async {
     setState(() => _isLoading = true);
     final response = await _apiService.getMySchedule();
+    final userRes = await _apiService.getUserData();
     if (mounted) {
       setState(() {
         if (response['success'] == true) {
           _schedules = List<Map<String, dynamic>>.from(response['schedules'] ?? []);
+        }
+        if (userRes['success'] == true) {
+          _currentUserId = userRes['user']?['userId'] as int?;
         }
         _isLoading = false;
       });
@@ -155,6 +162,8 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
         statusColor: _statusColor(_statusOf(schedule)),
         statusLabel: _statusLabel(_statusOf(schedule)),
         statusIcon: _statusIcon(_statusOf(schedule)),
+        currentUserId: _currentUserId,
+        onRefresh: _loadSchedules,
       ),
     );
   }
@@ -579,6 +588,16 @@ class _UpcomingList extends StatelessWidget {
               final status = statusOf(s);
               final color = statusColor(status);
               final start = DateTime.tryParse(s['startSchedule'] ?? '');
+              final imageFileName = s['engagementImage'] as String?;
+              ImageProvider? imageProvider;
+              if (imageFileName != null && imageFileName.isNotEmpty) {
+                if (imageFileName.startsWith('http://') || imageFileName.startsWith('https://')) {
+                  imageProvider = NetworkImage(imageFileName);
+                } else {
+                  imageProvider = NetworkImage('${ApiService.apiUrl}engagementImage/$imageFileName');
+                }
+              }
+
               return GestureDetector(
                 onTap: () => onTap(s),
                 child: Container(
@@ -598,7 +617,7 @@ class _UpcomingList extends StatelessWidget {
                     children: [
                       Container(
                         width: 5,
-                        height: 70,
+                        height: imageProvider != null ? 90 : 70,
                         decoration: BoxDecoration(
                           color: color,
                           borderRadius: const BorderRadius.only(
@@ -607,6 +626,25 @@ class _UpcomingList extends StatelessWidget {
                           ),
                         ),
                       ),
+                      if (imageProvider != null) ...[
+                        const SizedBox(width: 10),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image(
+                            image: imageProvider,
+                            width: 66,
+                            height: 66,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              width: 66,
+                              height: 66,
+                              color: Colors.grey.shade100,
+                              child: Icon(Icons.image_not_supported_rounded,
+                                  size: 24, color: Colors.grey.shade300),
+                            ),
+                          ),
+                        ),
+                      ],
                       const SizedBox(width: 12),
                       Expanded(
                         child: Padding(
@@ -862,6 +900,8 @@ class _EventDetailSheet extends StatelessWidget {
   final Color statusColor;
   final String statusLabel;
   final IconData statusIcon;
+  final int? currentUserId;
+  final VoidCallback onRefresh;
 
   const _EventDetailSheet({
     required this.schedule,
@@ -869,12 +909,49 @@ class _EventDetailSheet extends StatelessWidget {
     required this.statusColor,
     required this.statusLabel,
     required this.statusIcon,
+    this.currentUserId,
+    required this.onRefresh,
   });
+
+  Map<String, dynamic> _buildEngagementMap() {
+    return {
+      'engagementId': schedule['engagementId'],
+      'uploaderId': schedule['uploaderId'] ?? 0,
+      'categoryId': schedule['categoryId'] ?? 0,
+      'categoryName': schedule['categoryName'] ?? '',
+      'titleEngagement': schedule['titleEngagement'] ?? '',
+      'description': schedule['description'] ?? '',
+      'objective': schedule['objective'] ?? '',
+      'instruction': schedule['instruction'] ?? '',
+      'locationAddress': schedule['locationAddress'] ?? '',
+      'latitude': schedule['latitude'] ?? 0.0,
+      'longitude': schedule['longitude'] ?? 0.0,
+      'startSchedule': schedule['startSchedule'] ?? '',
+      'endSchedule': schedule['endSchedule'] ?? '',
+      'campus': schedule['campus'] ?? '',
+      'targetParty': schedule['targetParty'] ?? 0,
+      'activityPoints': schedule['activityPoints'] ?? 0,
+      'facilitatorName': schedule['facilitatorName'] ?? '',
+      'facilitatorContact': schedule['facilitatorContact'] ?? '',
+      'engagementImage': schedule['engagementImage'] ?? '',
+      'verificationStatus': 1,
+      'isOwner': 0,
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
     final start = DateTime.tryParse(schedule['startSchedule'] ?? '');
     final end = DateTime.tryParse(schedule['endSchedule'] ?? '');
+    final imageFileName = schedule['engagementImage'] as String?;
+    ImageProvider? imageProvider;
+    if (imageFileName != null && imageFileName.isNotEmpty) {
+      if (imageFileName.startsWith('http://') || imageFileName.startsWith('https://')) {
+        imageProvider = NetworkImage(imageFileName);
+      } else {
+        imageProvider = NetworkImage('${ApiService.apiUrl}engagementImage/$imageFileName');
+      }
+    }
 
     return DraggableScrollableSheet(
       initialChildSize: 0.65,
@@ -950,6 +1027,34 @@ class _EventDetailSheet extends StatelessWidget {
                       ],
                     ),
                   ),
+                  GestureDetector(
+                    onTap: () async {
+                      Navigator.pop(context);
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => EngagementDetailsScreen(
+                            engagement: _buildEngagementMap(),
+                            currentUserId: currentUserId,
+                          ),
+                        ),
+                      );
+                      onRefresh();
+                    },
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: AppTheme.redPink.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.open_in_new_rounded,
+                        color: AppTheme.redPink,
+                        size: 18,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -958,6 +1063,28 @@ class _EventDetailSheet extends StatelessWidget {
                 controller: controller,
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 children: [
+                  if (imageProvider != null) ...[
+                    const SizedBox(height: 4),
+                    GestureDetector(
+                      onTap: () => showFullScreenImage(context, imageProvider!),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Image(
+                          image: imageProvider,
+                          width: double.infinity,
+                          height: 180,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            height: 180,
+                            color: Colors.grey.shade100,
+                            child: Icon(Icons.image_not_supported_rounded,
+                                size: 40, color: Colors.grey.shade300),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   if ((schedule['categoryName'] ?? '').isNotEmpty)
                     _InfoRow(
                       icon: Icons.category_rounded,
