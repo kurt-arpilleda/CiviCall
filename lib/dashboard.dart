@@ -10,6 +10,7 @@ import 'package:civicall/drawerNavigation/reportProblem.dart';
 import 'package:civicall/homePage/engagementPost.dart';
 import 'package:civicall/api_service.dart';
 import 'package:civicall/information/newsArticles.dart';
+import 'package:civicall/drawerNavigation/scheduleCalendar.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -125,10 +126,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 _buildActionChip(
                   icon: Icons.event_outlined,
-                  label: 'Event',
+                  label: 'Schedule',
                   color: const Color(0xFF1565C0),
                   onTap: () {
                     Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ScheduleCalendarScreen()),
+                    );
                   },
                 ),
                 _buildActionChip(
