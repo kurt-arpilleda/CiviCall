@@ -184,6 +184,24 @@ class _EngagementCard extends StatelessWidget {
     required this.onRefresh,
   });
 
+  bool get _isEnded {
+    final endStr = engagement['endSchedule'] as String?;
+    if (endStr == null || endStr.isEmpty) return false;
+    final end = DateTime.tryParse(endStr);
+    if (end == null) return false;
+    return DateTime.now().isAfter(end);
+  }
+
+  bool get _isNearEnd {
+    if (_isEnded) return false;
+    final endStr = engagement['endSchedule'] as String?;
+    if (endStr == null || endStr.isEmpty) return false;
+    final end = DateTime.tryParse(endStr);
+    if (end == null) return false;
+    final difference = end.difference(DateTime.now()).inDays;
+    return difference <= 2;
+  }
+
   String _formatDate(String? raw) {
     if (raw == null || raw.isEmpty) return '—';
     try {
@@ -260,10 +278,48 @@ class _EngagementCard extends StatelessWidget {
                     const Color(0xFF1565C0),
                   ),
                   const SizedBox(height: 6),
-                  _buildInfoRow(
-                    Icons.calendar_today_outlined,
-                    _formatDate(engagement['startSchedule'] as String?),
-                    const Color(0xFF2E7D5E),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildInfoRow(
+                          Icons.calendar_today_outlined,
+                          _formatDate(engagement['startSchedule'] as String?),
+                          const Color(0xFF2E7D5E),
+                        ),
+                      ),
+                      if (_isNearEnd && !_isEnded)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE65100).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'Ending Soon',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFFE65100),
+                            ),
+                          ),
+                        ),
+                      if (_isEnded)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6A1B9A).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'Ended',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF6A1B9A),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 6),
                   _buildInfoRow(

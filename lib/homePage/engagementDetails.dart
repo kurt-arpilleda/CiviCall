@@ -10,7 +10,6 @@ import 'package:intl/intl.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:civicall/drawerNavigation/userVerification.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:civicall/imageViewer.dart';
 
 class EngagementDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> engagement;
@@ -81,6 +80,24 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
     super.dispose();
   }
 
+  bool get _isEnded {
+    final endStr = _engagement['endSchedule'] as String?;
+    if (endStr == null || endStr.isEmpty) return false;
+    final end = DateTime.tryParse(endStr);
+    if (end == null) return false;
+    return DateTime.now().isAfter(end);
+  }
+
+  bool get _isNearEnd {
+    if (_isEnded) return false;
+    final endStr = _engagement['endSchedule'] as String?;
+    if (endStr == null || endStr.isEmpty) return false;
+    final end = DateTime.tryParse(endStr);
+    if (end == null) return false;
+    final difference = end.difference(DateTime.now()).inDays;
+    return difference <= 2;
+  }
+
   Future<void> _loadDropdowns() async {
     final catRes = await _apiService.fetchEngagementCategories();
     final campRes = await _apiService.fetchCampus();
@@ -109,6 +126,10 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
   }
 
   Future<void> _handleJoin(BuildContext context) async {
+    if (_isEnded) {
+      _showSnack('This engagement has already ended.', isError: true);
+      return;
+    }
     final userRes = await _apiService.getUserData();
     if (!mounted) return;
     final isVerified = userRes['success'] == true && (userRes['user']?['isVerified'] ?? 0) == 1;
@@ -179,6 +200,10 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
   }
 
   Future<void> _handleCancel(BuildContext context) async {
+    if (_isEnded) {
+      _showSnack('Cannot cancel after the engagement has ended.', isError: true);
+      return;
+    }
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -931,7 +956,19 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
               Positioned(
                 bottom: 16,
                 left: 16,
-                child: _buildStatusChip((_engagement['verificationStatus'] as int? ?? 0) == 1),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildStatusChip((_engagement['verificationStatus'] as int? ?? 0) == 1),
+                    if (_isEnded) ...[
+                      const SizedBox(height: 8),
+                      _buildEndedChip(),
+                    ] else if (_isNearEnd) ...[
+                      const SizedBox(height: 8),
+                      _buildNearEndChip(),
+                    ],
+                  ],
+                ),
               ),
           ],
         ),
@@ -968,6 +1005,44 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
           Icon(isVerified ? Icons.verified_rounded : Icons.pending_rounded, color: Colors.white, size: 14),
           const SizedBox(width: 5),
           Text(isVerified ? 'Verified' : 'Pending Verification', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEndedChip() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF6A1B9A),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 8, offset: const Offset(0, 3))],
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.event_busy_rounded, color: Colors.white, size: 14),
+          SizedBox(width: 5),
+          Text('Ended', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNearEndChip() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE65100),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 8, offset: const Offset(0, 3))],
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.warning_amber_rounded, color: Colors.white, size: 14),
+          SizedBox(width: 5),
+          Text('Ending Soon', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -1301,6 +1376,22 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
           borderRadius: BorderRadius.circular(16),
         ),
         child: const Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppTheme.redPink))),
+      );
+    }
+    if (_isEnded) {
+      return Container(
+        width: double.infinity,
+        height: 52,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Center(
+          child: Text(
+            'Engagement Ended',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.darkGray),
+          ),
+        ),
       );
     }
     if (_isJoined) {
