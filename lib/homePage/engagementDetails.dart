@@ -35,6 +35,8 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
   bool _isJoined = false;
   bool _isJoinLoading = true;
   int _participantCount = 0;
+  int _isAttend = 0;
+  int _isCancel = 0;
 
   File? _newImage;
   List<Map<String, dynamic>> _categories = [];
@@ -120,8 +122,79 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
       setState(() {
         _isJoined = (res['isJoined'] as int? ?? 0) == 1;
         _participantCount = res['total'] as int? ?? 0;
-        _isJoinLoading = false;
       });
+    }
+    await _loadUserAttendanceStatus(engagementId);
+    setState(() {
+      _isJoinLoading = false;
+    });
+  }
+
+  Future<void> _loadUserAttendanceStatus(int engagementId) async {
+    final scheduleRes = await _apiService.getMySchedule();
+    if (scheduleRes['success'] != true) return;
+    final schedules = List<Map<String, dynamic>>.from(scheduleRes['schedules'] ?? []);
+    final myEntry = schedules.firstWhere(
+          (s) => s['engagementId'] == engagementId,
+      orElse: () => {},
+    );
+    if (myEntry.isNotEmpty) {
+      setState(() {
+        _isAttend = myEntry['isAttend'] as int? ?? 0;
+        _isCancel = myEntry['isCancel'] as int? ?? 0;
+      });
+    } else {
+      setState(() {
+        _isAttend = 0;
+        _isCancel = 0;
+      });
+    }
+  }
+
+  String get _attendanceDisplayStatus {
+    if (!_isJoined) return 'not_joined';
+    if (_isCancel == 1) return 'cancelled';
+    if (_isAttend == 1) return 'attended';
+    if (_isEnded) return 'not_attended';
+    return 'upcoming';
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'attended':
+        return const Color(0xFF1D9E75);
+      case 'cancelled':
+        return const Color(0xFFD53A47);
+      case 'not_attended':
+        return const Color(0xFFBA7517);
+      default:
+        return const Color(0xFF378ADD);
+    }
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'attended':
+        return 'Attended';
+      case 'cancelled':
+        return 'Cancelled';
+      case 'not_attended':
+        return 'Not attended';
+      default:
+        return 'Upcoming';
+    }
+  }
+
+  IconData _statusIcon(String status) {
+    switch (status) {
+      case 'attended':
+        return Icons.check_circle_rounded;
+      case 'cancelled':
+        return Icons.cancel_rounded;
+      case 'not_attended':
+        return Icons.remove_circle_rounded;
+      default:
+        return Icons.event_rounded;
     }
   }
 
@@ -187,10 +260,11 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
       return;
     }
     if (res['success'] == true) {
+      await _loadParticipantStatus();
       setState(() {
         _isJoined = true;
-        _participantCount++;
-        _isJoinLoading = false;
+        _isCancel = 0;
+        _isAttend = 0;
       });
       _showSnack('Successfully joined the engagement!');
     } else {
@@ -249,10 +323,10 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
     final res = await _apiService.cancelEngagement(engagementId: _engagement['engagementId'] as int);
     if (!mounted) return;
     if (res['success'] == true) {
+      await _loadParticipantStatus();
       setState(() {
         _isJoined = false;
-        _participantCount = (_participantCount - 1).clamp(0, 9999);
-        _isJoinLoading = false;
+        _isCancel = 1;
       });
       _showSnack('Participation cancelled.');
     } else {
@@ -1101,7 +1175,7 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
             const SizedBox(height: 12),
             _buildParticipantsTile(context),
             const SizedBox(height: 24),
-            _buildJoinCancelButton(context),
+            _buildActionButton(context),
           ],
         ],
       ),
@@ -1366,7 +1440,7 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
     );
   }
 
-  Widget _buildJoinCancelButton(BuildContext context) {
+  Widget _buildActionButton(BuildContext context) {
     if (_isJoinLoading) {
       return Container(
         width: double.infinity,
@@ -1378,7 +1452,34 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
         child: const Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppTheme.redPink))),
       );
     }
+
     if (_isEnded) {
+      final status = _attendanceDisplayStatus;
+      if (_isJoined && (status == 'attended' || status == 'not_attended' || status == 'cancelled')) {
+        final color = _statusColor(status);
+        final icon = _statusIcon(status);
+        final label = _statusLabel(status);
+        return Container(
+          width: double.infinity,
+          height: 52,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withOpacity(0.3)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: color),
+              ),
+            ],
+          ),
+        );
+      }
       return Container(
         width: double.infinity,
         height: 52,
@@ -1394,6 +1495,7 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
         ),
       );
     }
+
     if (_isJoined) {
       return SizedBox(
         width: double.infinity,
@@ -1410,6 +1512,7 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
         ),
       );
     }
+
     return SizedBox(
       width: double.infinity,
       height: 52,
