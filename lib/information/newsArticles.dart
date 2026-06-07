@@ -4,8 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:civicall/theme/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-const String _gNewsApiKey = '4207a1b830797cb04e34826e968fb159';
-const String _gNewsBaseUrl = 'https://gnews.io/api/v4';
+const String _newsApiKey = '6c21ab9cf70c4868a33d5255eb3e23db';
+const String _baseUrl = 'https://newsapi.org/v2';
 
 class NewsArticle {
   final String title;
@@ -34,10 +34,10 @@ class NewsArticle {
       description: json['description'] ?? '',
       content: json['content'] ?? '',
       url: json['url'] ?? '',
-      imageUrl: json['image'] ?? '',
+      imageUrl: json['urlToImage'] ?? '',
       publishedAt: json['publishedAt'] ?? '',
       sourceName: json['source']?['name'] ?? '',
-      sourceUrl: json['source']?['url'] ?? '',
+      sourceUrl: json['url'] ?? '',
     );
   }
 }
@@ -83,9 +83,9 @@ const List<NewsCategory> _categories = [
     mode: _FetchMode.topHeadlines,
   ),
   NewsCategory(
-    label: 'Community',
-    topicOrQuery: 'Philippines community barangay volunteers',
-    icon: Icons.people_rounded,
+    label: 'Economy',
+    topicOrQuery: 'Philippines economy business',
+    icon: Icons.business_center_rounded,
     color: Color(0xFF6A1B9A),
     mode: _FetchMode.search,
   ),
@@ -169,16 +169,20 @@ class _NewsArticlesScreenState extends State<NewsArticlesScreen>
     _fadeController.reset();
 
     final category = _categories[_selectedCategoryIndex];
-
     Uri uri;
-    if (category.mode == _FetchMode.topHeadlines) {
+
+    if (category.label == 'World') {
       uri = Uri.parse(
-        '$_gNewsBaseUrl/top-headlines?topic=${category.topicOrQuery}&lang=en&max=10&apikey=$_gNewsApiKey',
+        '$_baseUrl/top-headlines?country=us&apiKey=$_newsApiKey&pageSize=20',
       );
     } else {
-      final encodedQuery = Uri.encodeComponent(category.topicOrQuery);
+      String query = category.topicOrQuery;
+      if (!query.toLowerCase().contains('philippines')) {
+        query = '$query Philippines';
+      }
+      final encodedQuery = Uri.encodeComponent(query);
       uri = Uri.parse(
-        '$_gNewsBaseUrl/search?q=$encodedQuery&lang=en&max=10&sortby=publishedAt&apikey=$_gNewsApiKey',
+        '$_baseUrl/everything?q=$encodedQuery&language=en&sortBy=publishedAt&pageSize=20&apiKey=$_newsApiKey',
       );
     }
 
@@ -198,7 +202,7 @@ class _NewsArticlesScreenState extends State<NewsArticlesScreen>
           });
           _fadeController.forward();
         }
-      } else if (response.statusCode == 403) {
+      } else if (response.statusCode == 401 || response.statusCode == 403) {
         if (mounted) {
           setState(() {
             _isLoading = false;
