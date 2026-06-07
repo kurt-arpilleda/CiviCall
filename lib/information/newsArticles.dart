@@ -42,56 +42,80 @@ class NewsArticle {
   }
 }
 
+enum _FetchMode { topHeadlines, search }
+
 class NewsCategory {
   final String label;
-  final String query;
+  final String topicOrQuery;
   final IconData icon;
   final Color color;
+  final _FetchMode mode;
 
   const NewsCategory({
     required this.label,
-    required this.query,
+    required this.topicOrQuery,
     required this.icon,
     required this.color,
+    required this.mode,
   });
 }
 
 const List<NewsCategory> _categories = [
   NewsCategory(
-    label: 'All',
-    query: 'Philippines civic community',
+    label: 'Top News',
+    topicOrQuery: 'nation',
     icon: Icons.public_rounded,
     color: AppTheme.redPink,
-  ),
-  NewsCategory(
-    label: 'Civic',
-    query: 'Philippines civic engagement barangay',
-    icon: Icons.how_to_vote_rounded,
-    color: Color(0xFF1565C0),
+    mode: _FetchMode.topHeadlines,
   ),
   NewsCategory(
     label: 'Government',
-    query: 'Philippines local government policy',
+    topicOrQuery: 'politics',
     icon: Icons.account_balance_rounded,
+    color: Color(0xFF1565C0),
+    mode: _FetchMode.topHeadlines,
+  ),
+  NewsCategory(
+    label: 'World',
+    topicOrQuery: 'world',
+    icon: Icons.language_rounded,
     color: Color(0xFF2E7D5E),
+    mode: _FetchMode.topHeadlines,
   ),
   NewsCategory(
     label: 'Community',
-    query: 'Philippines community volunteer outreach',
+    topicOrQuery: 'Philippines community barangay volunteers',
     icon: Icons.people_rounded,
     color: Color(0xFF6A1B9A),
+    mode: _FetchMode.search,
   ),
   NewsCategory(
     label: 'Environment',
-    query: 'Philippines environment sustainability',
+    topicOrQuery: 'environment',
     icon: Icons.eco_rounded,
     color: Color(0xFF00695C),
+    mode: _FetchMode.topHeadlines,
   ),
   NewsCategory(
     label: 'Education',
-    query: 'Philippines education youth',
+    topicOrQuery: 'Philippines education students',
     icon: Icons.school_rounded,
     color: Color(0xFFE65100),
+    mode: _FetchMode.search,
+  ),
+  NewsCategory(
+    label: 'Health',
+    topicOrQuery: 'health',
+    icon: Icons.health_and_safety_rounded,
+    color: Color(0xFFAD1457),
+    mode: _FetchMode.topHeadlines,
+  ),
+  NewsCategory(
+    label: 'Technology',
+    topicOrQuery: 'technology',
+    icon: Icons.computer_rounded,
+    color: Color(0xFF283593),
+    mode: _FetchMode.topHeadlines,
   ),
 ];
 
@@ -145,10 +169,18 @@ class _NewsArticlesScreenState extends State<NewsArticlesScreen>
     _fadeController.reset();
 
     final category = _categories[_selectedCategoryIndex];
-    final encodedQuery = Uri.encodeComponent(category.query);
-    final uri = Uri.parse(
-      '$_gNewsBaseUrl/search?q=$encodedQuery&lang=en&country=ph&max=20&apikey=$_gNewsApiKey',
-    );
+
+    Uri uri;
+    if (category.mode == _FetchMode.topHeadlines) {
+      uri = Uri.parse(
+        '$_gNewsBaseUrl/top-headlines?topic=${category.topicOrQuery}&lang=en&max=10&apikey=$_gNewsApiKey',
+      );
+    } else {
+      final encodedQuery = Uri.encodeComponent(category.topicOrQuery);
+      uri = Uri.parse(
+        '$_gNewsBaseUrl/search?q=$encodedQuery&lang=en&max=10&sortby=publishedAt&apikey=$_gNewsApiKey',
+      );
+    }
 
     try {
       final response = await http.get(uri).timeout(const Duration(seconds: 15));
@@ -157,7 +189,7 @@ class _NewsArticlesScreenState extends State<NewsArticlesScreen>
         final List<dynamic> rawArticles = data['articles'] ?? [];
         final parsed = rawArticles
             .map((a) => NewsArticle.fromJson(a as Map<String, dynamic>))
-            .where((a) => a.title.isNotEmpty)
+            .where((a) => a.title.isNotEmpty && a.title != '[Removed]')
             .toList();
         if (mounted) {
           setState(() {
@@ -171,7 +203,15 @@ class _NewsArticlesScreenState extends State<NewsArticlesScreen>
           setState(() {
             _isLoading = false;
             _hasError = true;
-            _errorMessage = 'API key invalid or quota exceeded.';
+            _errorMessage = 'API key invalid or quota exceeded. Please try again later.';
+          });
+        }
+      } else if (response.statusCode == 429) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _hasError = true;
+            _errorMessage = 'Too many requests. Please wait a moment and try again.';
           });
         }
       } else {
@@ -179,7 +219,7 @@ class _NewsArticlesScreenState extends State<NewsArticlesScreen>
           setState(() {
             _isLoading = false;
             _hasError = true;
-            _errorMessage = 'Failed to load news. Please try again.';
+            _errorMessage = 'Failed to load news (${response.statusCode}). Please try again.';
           });
         }
       }
@@ -188,7 +228,7 @@ class _NewsArticlesScreenState extends State<NewsArticlesScreen>
         setState(() {
           _isLoading = false;
           _hasError = true;
-          _errorMessage = 'No internet connection.';
+          _errorMessage = 'No internet connection. Please check your network and retry.';
         });
       }
     }
@@ -352,17 +392,13 @@ class _NewsArticlesScreenState extends State<NewsArticlesScreen>
                         Icon(
                           cat.icon,
                           size: 14,
-                          color: isSelected
-                              ? AppTheme.white
-                              : cat.color,
+                          color: isSelected ? AppTheme.white : cat.color,
                         ),
                         const SizedBox(width: 5),
                         Text(
                           cat.label,
                           style: TextStyle(
-                            color: isSelected
-                                ? AppTheme.white
-                                : cat.color,
+                            color: isSelected ? AppTheme.white : cat.color,
                             fontSize: 12.5,
                             fontWeight: FontWeight.w600,
                           ),
@@ -715,8 +751,7 @@ class _NewsArticlesScreenState extends State<NewsArticlesScreen>
           _SkeletonPulse(
             width: double.infinity,
             height: 200,
-            borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           Padding(
             padding: const EdgeInsets.all(16),
@@ -832,8 +867,7 @@ class _NewsArticlesScreenState extends State<NewsArticlesScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.redPink,
                 foregroundColor: AppTheme.white,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
