@@ -198,6 +198,30 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
     }
   }
 
+  Future<bool> _hasScheduleConflict() async {
+    final myScheduleRes = await _apiService.getMySchedule();
+    if (myScheduleRes['success'] != true) return false;
+
+    final schedules = List<Map<String, dynamic>>.from(myScheduleRes['schedules'] ?? []);
+    final activeSchedules = schedules.where((s) => s['isCancel'] == 0).toList();
+    if (activeSchedules.isEmpty) return false;
+
+    final newStart = DateTime.tryParse(_engagement['startSchedule'] as String? ?? '');
+    final newEnd = DateTime.tryParse(_engagement['endSchedule'] as String? ?? '');
+    if (newStart == null || newEnd == null) return false;
+
+    for (final s in activeSchedules) {
+      final existingStart = DateTime.tryParse(s['startSchedule'] as String? ?? '');
+      final existingEnd = DateTime.tryParse(s['endSchedule'] as String? ?? '');
+      if (existingStart == null || existingEnd == null) continue;
+
+      if (newStart.isBefore(existingEnd) && newEnd.isAfter(existingStart)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   Future<void> _handleJoin(BuildContext context) async {
     if (_isEnded) {
       _showSnack('This engagement has already ended.', isError: true);
@@ -210,6 +234,52 @@ class _EngagementDetailsScreenState extends State<EngagementDetailsScreen> {
       _showUnverifiedJoinDialog(context);
       return;
     }
+
+    final bool hasConflict = await _hasScheduleConflict();
+    if (hasConflict) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64, height: 64,
+                decoration: BoxDecoration(color: AppTheme.redPink.withOpacity(0.1), shape: BoxShape.circle),
+                child: const Icon(Icons.warning_amber_rounded, color: AppTheme.redPink, size: 32),
+              ),
+              const SizedBox(height: 16),
+              const Text('Schedule Conflict', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.darkGray), textAlign: TextAlign.center),
+              const SizedBox(height: 10),
+              Text(
+                'This engagement conflicts with another engagement you have already joined.\nAre you sure you want to proceed?',
+                style: TextStyle(fontSize: 13.5, color: AppTheme.darkGray.withOpacity(0.65), height: 1.5),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('Cancel', style: TextStyle(color: AppTheme.darkGray.withOpacity(0.5))),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.redPink,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Join Anyway'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
