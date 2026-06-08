@@ -10,6 +10,7 @@ import 'package:civicall/anim/skeletonAnimation.dart';
 import 'package:civicall/imageViewer.dart';
 import 'package:civicall/drawerNavigation/feedBack.dart';
 import 'package:civicall/drawerNavigation/scheduleCalendar.dart';
+import 'package:civicall/drawerNavigation/leaderboard.dart';
 
 class AppDrawer extends StatefulWidget {
   const AppDrawer({Key? key}) : super(key: key);
@@ -197,7 +198,13 @@ class _AppDrawerState extends State<AppDrawer> {
                     _buildNavItem(
                       icon: Icons.emoji_events_outlined,
                       label: 'Leaderboard',
-                      onTap: () => Navigator.pop(context),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
+                        );
+                      },
                     ),
                     const Spacer(),
                     Padding(

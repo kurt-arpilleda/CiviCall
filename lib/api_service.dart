@@ -641,6 +641,21 @@ class ApiService {
       return {'success': false, 'message': e.toString()};
     }
   }
+  Future<Map<String, dynamic>> getLeaderboard({List<int>? campusIds}) async {
+    return _executeWithRetry(() async {
+      final token = await getAuthToken();
+      if (token == null) {
+        return {"success": false, "message": "No token"};
+      }
+      final uri = Uri.parse("${apiUrl}civicall_leaderboard.php");
+      final body = <String, String>{'authToken': token};
+      if (campusIds != null && campusIds.isNotEmpty) {
+        body['campusIds'] = campusIds.join(',');
+      }
+      final response = await httpClient.post(uri, body: body).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
   Future<void> saveAuthToken(String token) async {
     await _secureStorage.write(key: 'authToken', value: token);
   }
