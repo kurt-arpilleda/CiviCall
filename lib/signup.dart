@@ -5,6 +5,7 @@ import 'options.dart';
 import 'longText/termsConditions.dart';
 import 'longText/privacyPolicy.dart';
 import 'api_service.dart';
+import 'package:civicall/login.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
@@ -219,15 +220,44 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
     if (!mounted) return;
 
     if (result['success'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Registration successful! You can now sign in.'),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.mark_email_read_outlined, color: Color(0xFFD53A47)),
+              SizedBox(width: 10),
+              Text('Registration Successful', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            ],
+          ),
+          content: const Text(
+            'Please check your email and click the verification link to activate your account before logging in.',
+            style: TextStyle(fontSize: 14),
+          ),
+          actions: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD53A47),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK'),
+            ),
+          ],
         ),
       );
-      Navigator.pop(context);
-    } else {
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+              (route) => false,
+        );
+      }
+    }
+    else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result['message'] ?? 'Registration failed. Please try again.'),
