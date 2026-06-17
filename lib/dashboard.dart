@@ -1,5 +1,7 @@
+// dashboard.dart - Complete file with Forum integrated
 import 'dart:ui' as ui;
 import 'package:civicall/addDrawer/addEngagement.dart';
+import 'package:civicall/addDrawer/addForum.dart';
 import 'package:civicall/drawerNavigation/userVerification.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,6 +13,7 @@ import 'package:civicall/homePage/engagementPost.dart';
 import 'package:civicall/api_service.dart';
 import 'package:civicall/information/newsArticles.dart';
 import 'package:civicall/drawerNavigation/scheduleCalendar.dart';
+import 'package:civicall/forum/forumPost.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -25,6 +28,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final ApiService _apiService = ApiService();
   final GlobalKey<EngagementFeedScreenState> _engagementFeedKey =
   GlobalKey<EngagementFeedScreenState>();
+  final GlobalKey<ForumPostScreenState> _forumPostKey =
+  GlobalKey<ForumPostScreenState>();
 
   static const List<String> _pageTitles = [
     'Home',
@@ -36,7 +41,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final List<Widget> _pages = const [
     EngagementFeedScreen(),
     NewsArticlesScreen(),
-    _DummyPage(label: 'Forum', icon: Icons.forum_outlined),
+    ForumPostScreen(),
     _DummyPage(label: 'Notifications', icon: Icons.notifications_outlined),
   ];
 
@@ -140,8 +145,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   icon: Icons.post_add_outlined,
                   label: 'Post in Forum',
                   color: const Color(0xFF6A1B9A),
-                  onTap: () {
+                  onTap: () async {
                     Navigator.pop(context);
+                    final userRes = await _apiService.getUserData();
+                    if (!mounted) return;
+                    final isVerified = userRes['success'] == true &&
+                        (userRes['user']?['isVerified'] ?? 0) == 1;
+                    if (!isVerified) {
+                      _showUnverifiedForumDialog();
+                      return;
+                    }
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AddForumScreen(
+                          onPostCreated: () {
+                            _forumPostKey.currentState?.refresh();
+                          },
+                        ),
+                      ),
+                    );
+                    _forumPostKey.currentState?.refresh();
                   },
                 ),
               ],
@@ -152,6 +176,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
+
   void _showUnverifiedDialog() {
     showDialog(
       context: context,
@@ -218,6 +243,74 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
+
+  void _showUnverifiedForumDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: AppTheme.redPink.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.verified_user_outlined,
+                  color: AppTheme.redPink, size: 32),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Verification Required',
+              style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.darkGray),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'You need to verify your account before you can post in the forum.',
+              style: TextStyle(
+                  fontSize: 13.5,
+                  color: AppTheme.darkGray.withOpacity(0.65),
+                  height: 1.5),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Maybe Later',
+                style: TextStyle(color: AppTheme.darkGray.withOpacity(0.5))),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const UserVerificationScreen()),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.redPink,
+              foregroundColor: AppTheme.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Verify Now'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildActionChip({
     required IconData icon,
     required String label,
@@ -315,7 +408,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             EngagementFeedScreen(key: _engagementFeedKey),
             _pages[1],
-            _pages[2],
+            ForumPostScreen(key: _forumPostKey),
             _pages[3],
           ],
         ),

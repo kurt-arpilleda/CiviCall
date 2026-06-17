@@ -656,6 +656,45 @@ class ApiService {
       return _handleResponse(response);
     });
   }
+  // api_service.dart - Add these methods inside ApiService class
+
+// Add this method to ApiService class
+  Future<Map<String, dynamic>> createForumPost({
+    required String message,
+    File? imageFile,
+  }) async {
+    return _executeWithRetry(() async {
+      final token = await _secureStorage.read(key: 'authToken') ?? '';
+      final uri = Uri.parse("${apiUrl}civicall_add_forum.php");
+
+      final request = http.MultipartRequest('POST', uri);
+      request.fields['authToken'] = token;
+      request.fields['message'] = message;
+
+      if (imageFile != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath('forumImage', imageFile.path),
+        );
+      }
+
+      final streamed = await httpClient.send(request).timeout(requestTimeoutUploadImage);
+      final body = await streamed.stream.bytesToString();
+      return _handleStreamResponse(streamed, body);
+    });
+  }
+
+// Add this method to ApiService class
+  Future<Map<String, dynamic>> getForumPosts() async {
+    return _executeWithRetry(() async {
+      final token = await _secureStorage.read(key: 'authToken') ?? '';
+      final uri = Uri.parse("${apiUrl}civicall_get_forum_posts.php");
+      final response = await httpClient.post(
+        uri,
+        body: {'authToken': token},
+      ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
   Future<void> saveAuthToken(String token) async {
     await _secureStorage.write(key: 'authToken', value: token);
   }
