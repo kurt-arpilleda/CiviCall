@@ -695,6 +695,26 @@ class ApiService {
       return _handleResponse(response);
     });
   }
+  // api_service.dart - Add these methods inside ApiService class
+
+  Future<Map<String, dynamic>> voteForumPost({
+    required int forumId,
+    required int voteType,
+  }) async {
+    return _executeWithRetry(() async {
+      final token = await _secureStorage.read(key: 'authToken') ?? '';
+      final uri = Uri.parse("${apiUrl}civicall_vote_forum.php");
+      final response = await httpClient.post(
+        uri,
+        body: {
+          'authToken': token,
+          'forumId': forumId.toString(),
+          'voteType': voteType.toString(),
+        },
+      ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
   Future<void> saveAuthToken(String token) async {
     await _secureStorage.write(key: 'authToken', value: token);
   }

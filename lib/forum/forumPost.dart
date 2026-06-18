@@ -81,6 +81,15 @@ class ForumPostScreenState extends State<ForumPostScreen> {
     }
   }
 
+  String _formatCount(int count) {
+    if (count >= 1000000) {
+      return '${(count / 1000000).toStringAsFixed(1)}M';
+    } else if (count >= 1000) {
+      return '${(count / 1000).toStringAsFixed(1)}K';
+    }
+    return count.toString();
+  }
+
   ImageProvider _resolveProfileImage(String? photoUrl) {
     if (photoUrl == null || photoUrl.isEmpty) {
       return const AssetImage('assets/images/default_avatar.png');
@@ -122,6 +131,8 @@ class ForumPostScreenState extends State<ForumPostScreen> {
             profileImageProvider: _resolveProfileImage(_posts[i]['photo_url'] as String?),
             forumImageProvider: _resolveForumImage(_posts[i]['image'] as String?),
             timeAgo: _timeAgo(_posts[i]['createdAt'] as String),
+            onVoteChanged: _loadPosts,
+            formatCount: _formatCount,
           ),
         ),
       ),
@@ -251,26 +262,114 @@ class ForumPostScreenState extends State<ForumPostScreen> {
   }
 }
 
-class _ForumPostCard extends StatelessWidget {
+class _ForumPostCard extends StatefulWidget {
   final Map<String, dynamic> post;
   final ImageProvider profileImageProvider;
   final ImageProvider forumImageProvider;
   final String timeAgo;
+  final VoidCallback onVoteChanged;
+  final String Function(int) formatCount;
 
   const _ForumPostCard({
     required this.post,
     required this.profileImageProvider,
     required this.forumImageProvider,
     required this.timeAgo,
+    required this.onVoteChanged,
+    required this.formatCount,
   });
 
   @override
+  State<_ForumPostCard> createState() => _ForumPostCardState();
+}
+
+class _ForumPostCardState extends State<_ForumPostCard> {
+  final ApiService _apiService = ApiService();
+  bool _isVoting = false;
+  int? _userVoteType;
+  int _upCount = 0;
+  int _downCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _upCount = widget.post['upCount'] as int? ?? 0;
+    _downCount = widget.post['downCount'] as int? ?? 0;
+    _userVoteType = widget.post['userVoteType'] as int?;
+  }
+
+  Future<void> _handleVote(int voteType) async {
+    if (_isVoting) return;
+
+    final userRes = await _apiService.getUserData();
+    if (!mounted) return;
+
+    if (userRes['success'] != true) {
+      _showSnackBar('Please login to vote.');
+      return;
+    }
+
+    final isVerified = (userRes['user']?['isVerified'] ?? 0) == 1;
+    if (!isVerified) {
+      _showSnackBar('Only verified users can vote.');
+      return;
+    }
+
+    setState(() => _isVoting = true);
+
+    final forumId = widget.post['forumId'] as int;
+    final result = await _apiService.voteForumPost(
+      forumId: forumId,
+      voteType: voteType,
+    );
+
+    if (!mounted) {
+      setState(() => _isVoting = false);
+      return;
+    }
+
+    if (result['success'] == true) {
+      final newUpCount = result['upCount'] as int? ?? _upCount;
+      final newDownCount = result['downCount'] as int? ?? _downCount;
+      final newUserVote = result['userVote'] as int?;
+
+      setState(() {
+        _upCount = newUpCount;
+        _downCount = newDownCount;
+        _userVoteType = newUserVote;
+        _isVoting = false;
+      });
+
+      widget.onVoteChanged();
+    } else {
+      setState(() => _isVoting = false);
+      _showSnackBar(result['message'] ?? 'Failed to vote.');
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.info_outline_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppTheme.redPink,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+  @override
   Widget build(BuildContext context) {
-    final firstName = post['firstName'] as String? ?? '';
-    final lastName = post['lastName'] as String? ?? '';
+    final firstName = widget.post['firstName'] as String? ?? '';
+    final lastName = widget.post['lastName'] as String? ?? '';
     final fullName = '$firstName $lastName'.trim();
-    final message = post['message'] as String? ?? '';
-    final hasImage = post['image'] != null && post['image'].toString().isNotEmpty;
+    final message = widget.post['message'] as String? ?? '';
+    final hasImage = widget.post['image'] != null && widget.post['image'].toString().isNotEmpty;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -295,7 +394,7 @@ class _ForumPostCard extends StatelessWidget {
                 GestureDetector(
                   onTap: () {
                     try {
-                      showFullScreenImage(context, profileImageProvider);
+                      showFullScreenImage(context, widget.profileImageProvider);
                     } catch (_) {}
                   },
                   child: Container(
@@ -311,7 +410,7 @@ class _ForumPostCard extends StatelessWidget {
                     ),
                     child: ClipOval(
                       child: Image(
-                        image: profileImageProvider,
+                        image: widget.profileImageProvider,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => Container(
                           color: AppTheme.redPink.withOpacity(0.08),
@@ -345,7 +444,7 @@ class _ForumPostCard extends StatelessWidget {
                       Row(
                         children: [
                           Text(
-                            timeAgo,
+                            widget.timeAgo,
                             style: TextStyle(
                               fontSize: 11,
                               color: AppTheme.darkGray.withOpacity(0.4),
@@ -395,7 +494,7 @@ class _ForumPostCard extends StatelessWidget {
             GestureDetector(
               onTap: () {
                 try {
-                  showFullScreenImage(context, forumImageProvider);
+                  showFullScreenImage(context, widget.forumImageProvider);
                 } catch (_) {}
               },
               child: ClipRRect(
@@ -404,7 +503,7 @@ class _ForumPostCard extends StatelessWidget {
                   bottomRight: Radius.circular(18),
                 ),
                 child: Image(
-                  image: forumImageProvider,
+                  image: widget.forumImageProvider,
                   width: double.infinity,
                   height: 280,
                   fit: BoxFit.cover,
@@ -421,8 +520,89 @@ class _ForumPostCard extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+            child: Row(
+              children: [
+                _VoteButton(
+                  icon: Icons.arrow_upward_rounded,
+                  isActive: _userVoteType == 1,
+                  count: _upCount,
+                  formatCount: widget.formatCount,
+                  onTap: () => _handleVote(1),
+                  isLoading: _isVoting,
+                  color: Colors.green,
+                ),
+                const SizedBox(width: 8),
+                _VoteButton(
+                  icon: Icons.arrow_downward_rounded,
+                  isActive: _userVoteType == 0,
+                  count: _downCount,
+                  formatCount: widget.formatCount,
+                  onTap: () => _handleVote(0),
+                  isLoading: _isVoting,
+                  color: Colors.red,
+                ),
+              ],
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _VoteButton extends StatelessWidget {
+  final IconData icon;
+  final bool isActive;
+  final int count;
+  final String Function(int) formatCount;
+  final VoidCallback onTap;
+  final bool isLoading;
+  final Color color;
+
+  const _VoteButton({
+    required this.icon,
+    required this.isActive,
+    required this.count,
+    required this.formatCount,
+    required this.onTap,
+    required this.isLoading,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: isLoading ? null : onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: isActive ? color.withOpacity(0.12) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isActive ? color : Colors.transparent,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isActive ? color : AppTheme.darkGray.withOpacity(0.35),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              formatCount(count),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isActive ? color : AppTheme.darkGray.withOpacity(0.5),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
