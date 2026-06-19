@@ -21,6 +21,8 @@ class _AddForumScreenState extends State<AddForumScreen>
   final TextEditingController _messageController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
+  static const int _maxChars = 1000;
+
   File? _pickedImage;
   bool _isSubmitting = false;
   bool _hasText = false;
@@ -32,6 +34,9 @@ class _AddForumScreenState extends State<AddForumScreen>
   late Animation<double> _postBtnScale;
   late AnimationController _imageAnim;
   late Animation<double> _imageFade;
+  late AnimationController _entranceAnim;
+  late Animation<double> _entranceFade;
+  late Animation<Offset> _entranceSlide;
 
   @override
   void initState() {
@@ -49,8 +54,19 @@ class _AddForumScreenState extends State<AddForumScreen>
     );
     _imageFade = CurvedAnimation(parent: _imageAnim, curve: Curves.easeOut);
 
+    _entranceAnim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 480),
+    );
+    _entranceFade = CurvedAnimation(parent: _entranceAnim, curve: Curves.easeOut);
+    _entranceSlide = Tween<Offset>(
+      begin: const Offset(0, 0.04),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _entranceAnim, curve: Curves.easeOutCubic));
+
     _messageController.addListener(_onTextChanged);
     _loadUser();
+    _entranceAnim.forward();
   }
 
   Future<void> _loadUser() async {
@@ -70,6 +86,8 @@ class _AddForumScreenState extends State<AddForumScreen>
     if (hasText != _hasText) {
       setState(() => _hasText = hasText);
       _syncPostButton();
+    } else {
+      setState(() {});
     }
   }
 
@@ -87,6 +105,13 @@ class _AddForumScreenState extends State<AddForumScreen>
     final last = (_userData!['lastName'] ?? '').toString().trim();
     return '$first $last'.trim();
   }
+
+  String get _campusName {
+    final raw = (_userData?['campusName'] ?? '').toString().trim();
+    return raw.isNotEmpty ? raw : 'Campus Community';
+  }
+
+  bool get _isVerifiedUser => (_userData?['isVerified'] ?? 0) == 1;
 
   ImageProvider? get _profileImage {
     final raw = _userData?['photo_url'];
@@ -106,6 +131,7 @@ class _AddForumScreenState extends State<AddForumScreen>
     _focusNode.dispose();
     _postBtnAnim.dispose();
     _imageAnim.dispose();
+    _entranceAnim.dispose();
     super.dispose();
   }
 
@@ -149,7 +175,7 @@ class _AddForumScreenState extends State<AddForumScreen>
       _showSnack(
         message: 'Your post is live!',
         icon: Icons.check_circle_rounded,
-        color: const Color(0xFF2E7D5E),
+        color: const Color(0xFF1E9E6B),
       );
       widget.onPostCreated?.call();
       Navigator.pop(context);
@@ -172,8 +198,15 @@ class _AddForumScreenState extends State<AddForumScreen>
       SnackBar(
         content: Row(
           children: [
-            Icon(icon, color: Colors.white, size: 18),
-            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: Colors.white, size: 16),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 message,
@@ -187,10 +220,10 @@ class _AddForumScreenState extends State<AddForumScreen>
         ),
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         duration: const Duration(seconds: 3),
-        elevation: 8,
+        elevation: 6,
       ),
     );
   }
@@ -226,33 +259,43 @@ class _AddForumScreenState extends State<AddForumScreen>
         statusBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFF2F3F7),
-        body: Column(
+        backgroundColor: const Color(0xFFF4F5F9),
+        resizeToAvoidBottomInset: false,
+        body: Stack(
           children: [
-            _buildHeader(topPad),
-            Expanded(
-              child: GestureDetector(
-                onTap: () => FocusScope.of(context).unfocus(),
-                child: SingleChildScrollView(
-                  physics: const ClampingScrollPhysics(),
-                  padding: EdgeInsets.only(
-                    top: 12,
-                    left: 0,
-                    right: 0,
-                    bottom: bottomInset > 0 ? bottomInset + 70 : 90,
-                  ),
-                  child: Column(
-                    children: [
-                      _buildComposerCard(),
-                      if (_pickedImage != null) _buildImagePreviewCard(),
-                      const SizedBox(height: 12),
-                      _buildAddToPostBar(),
-                    ],
+            Column(
+              children: [
+                _buildHeader(topPad),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => FocusScope.of(context).unfocus(),
+                    child: SingleChildScrollView(
+                      physics: const ClampingScrollPhysics(),
+                      padding: EdgeInsets.only(
+                        top: 16,
+                        bottom: 120,
+                      ),
+                      child: Column(
+                        children: [
+                          _buildGuidelineStrip(),
+                          const SizedBox(height: 12),
+                          _buildComposerCard(),
+                          if (_pickedImage != null) _buildImagePreviewCard(),
+                          const SizedBox(height: 12),
+                          _buildAddToPostBar(),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
-            _buildBottomPostButton(bottomInset),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: bottomInset > 0 ? bottomInset + 12 : 24,
+              child: _buildBottomPostButton(),
+            ),
           ],
         ),
       ),
@@ -263,17 +306,21 @@ class _AddForumScreenState extends State<AddForumScreen>
     return Container(
       padding: EdgeInsets.only(
         top: topPad + 10,
-        left: 8,
-        right: 16,
-        bottom: 10,
+        left: 6,
+        right: 18,
+        bottom: 16,
       ),
       decoration: BoxDecoration(
-        color: AppTheme.redPink,
+        gradient: LinearGradient(
+          colors: [AppTheme.redPink, AppTheme.redPink.withOpacity(0.88)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.redPink.withOpacity(0.35),
-            blurRadius: 18,
-            offset: const Offset(0, 4),
+            color: AppTheme.redPink.withOpacity(0.32),
+            blurRadius: 22,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -282,32 +329,88 @@ class _AddForumScreenState extends State<AddForumScreen>
           IconButton(
             onPressed: () => Navigator.pop(context),
             icon: Container(
-              width: 36,
-              height: 36,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.18),
-                borderRadius: BorderRadius.circular(10),
+                color: Colors.white.withOpacity(0.16),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.15)),
               ),
               child: const Icon(
                 Icons.close_rounded,
-                size: 18,
+                size: 19,
                 color: Colors.white,
               ),
             ),
           ),
           const Expanded(
+            child: Column(
+              children: [
+                Text(
+                  'Create Post',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Share something with your campus',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white70,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 38),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuidelineStrip() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3F4),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.redPink.withOpacity(0.14)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: AppTheme.redPink.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(
+              Icons.campaign_rounded,
+              size: 15,
+              color: AppTheme.redPink,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
             child: Text(
-              'Create Post',
-              textAlign: TextAlign.center,
+              'Keep posts respectful and relevant to your community.',
               style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-                letterSpacing: 0.2,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.darkGray.withOpacity(0.65),
+                height: 1.3,
               ),
             ),
           ),
-          const SizedBox(width: 52),
         ],
       ),
     );
@@ -318,12 +421,12 @@ class _AddForumScreenState extends State<AddForumScreen>
       margin: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
+            color: AppTheme.darkGray.withOpacity(0.07),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -332,7 +435,8 @@ class _AddForumScreenState extends State<AddForumScreen>
         children: [
           _buildAuthorRow(),
           _buildTextField(),
-          const SizedBox(height: 12),
+          _buildCharCounter(),
+          const SizedBox(height: 10),
         ],
       ),
     );
@@ -340,7 +444,7 @@ class _AddForumScreenState extends State<AddForumScreen>
 
   Widget _buildAuthorRow() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
       child: Row(
         children: [
           _buildAvatar(),
@@ -351,47 +455,102 @@ class _AddForumScreenState extends State<AddForumScreen>
               children: [
                 _isLoadingUser
                     ? Container(
-                  width: 110,
-                  height: 13,
+                  width: 120,
+                  height: 14,
                   decoration: BoxDecoration(
                     color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(7),
                   ),
                 )
-                    : Text(
-                  _fullName.isNotEmpty ? _fullName : 'You',
-                  style: const TextStyle(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.darkGray,
-                    letterSpacing: 0.1,
-                  ),
+                    : Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        _fullName.isNotEmpty ? _fullName : 'You',
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.darkGray,
+                          letterSpacing: 0.1,
+                        ),
+                      ),
+                    ),
+                    if (_isVerifiedUser) ...[
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.verified_rounded,
+                        size: 14,
+                        color: AppTheme.redPink.withOpacity(0.85),
+                      ),
+                    ],
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                const SizedBox(height: 5),
+                _isLoadingUser
+                    ? Container(
+                  width: 90,
+                  height: 18,
                   decoration: BoxDecoration(
-                    color: AppTheme.darkGray.withOpacity(0.07),
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                )
+                    : Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 9, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.redPink.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        Icons.people_rounded,
+                        Icons.location_on_rounded,
                         size: 11,
-                        color: AppTheme.darkGray.withOpacity(0.55),
+                        color: AppTheme.redPink.withOpacity(0.75),
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        'Campus Community',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.darkGray.withOpacity(0.55),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 160),
+                        child: Text(
+                          _campusName,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.redPink.withOpacity(0.85),
+                          ),
                         ),
                       ),
                     ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppTheme.darkGray.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.public_rounded,
+                  size: 12,
+                  color: AppTheme.darkGray.withOpacity(0.5),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Public',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.darkGray.withOpacity(0.5),
                   ),
                 ),
               ],
@@ -407,36 +566,47 @@ class _AddForumScreenState extends State<AddForumScreen>
     return Stack(
       children: [
         Container(
-          width: 48,
-          height: 48,
+          width: 50,
+          height: 50,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(
-              color: AppTheme.redPink.withOpacity(0.25),
-              width: 2,
+            gradient: LinearGradient(
+              colors: [
+                AppTheme.redPink.withOpacity(0.9),
+                AppTheme.redPink.withOpacity(0.5),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            color: AppTheme.redPink.withOpacity(0.1),
           ),
-          child: ClipOval(
-            child: _isLoadingUser
-                ? Container(color: Colors.grey.shade200)
-                : img != null
-                ? Image(
-              image: img,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _avatarFallback(),
-            )
-                : _avatarFallback(),
+          padding: const EdgeInsets.all(2),
+          child: Container(
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+            ),
+            padding: const EdgeInsets.all(1.5),
+            child: ClipOval(
+              child: _isLoadingUser
+                  ? Container(color: Colors.grey.shade200)
+                  : img != null
+                  ? Image(
+                image: img,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _avatarFallback(),
+              )
+                  : _avatarFallback(),
+            ),
           ),
         ),
         Positioned(
           bottom: 0,
           right: 0,
           child: Container(
-            width: 16,
-            height: 16,
+            width: 15,
+            height: 15,
             decoration: BoxDecoration(
-              color: const Color(0xFF43A047),
+              color: const Color(0xFF1E9E6B),
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white, width: 2),
             ),
@@ -448,41 +618,67 @@ class _AddForumScreenState extends State<AddForumScreen>
 
   Widget _avatarFallback() {
     return Container(
-      color: AppTheme.redPink.withOpacity(0.12),
-      child: const Icon(
+      color: AppTheme.redPink.withOpacity(0.1),
+      child: Icon(
         Icons.person_rounded,
         size: 26,
-        color: AppTheme.redPink,
+        color: AppTheme.redPink.withOpacity(0.8),
       ),
     );
   }
 
   Widget _buildTextField() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: TextField(
         controller: _messageController,
         focusNode: _focusNode,
         autofocus: true,
         maxLines: null,
         minLines: 4,
+        maxLength: _maxChars,
         keyboardType: TextInputType.multiline,
         textInputAction: TextInputAction.newline,
+        buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
         style: TextStyle(
-          fontSize: _messageController.text.isEmpty ? 20 : 16,
+          fontSize: _messageController.text.isEmpty ? 19 : 16,
           color: AppTheme.darkGray,
-          height: 1.55,
+          height: 1.5,
           fontWeight: FontWeight.w400,
         ),
         decoration: InputDecoration(
-          hintText: "What's on your mind?",
+          hintText: "What's happening in your community?",
           hintStyle: TextStyle(
-            fontSize: 20,
-            color: AppTheme.darkGray.withOpacity(0.25),
+            fontSize: 18,
+            color: AppTheme.darkGray.withOpacity(0.28),
             fontWeight: FontWeight.w400,
+            height: 1.4,
           ),
           border: InputBorder.none,
-          contentPadding: EdgeInsets.zero,
+          contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
+          isDense: true,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCharCounter() {
+    final length = _messageController.text.length;
+    final nearLimit = length > _maxChars - 60;
+    if (length == 0) return const SizedBox(height: 4);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Text(
+          '$length/$_maxChars',
+          style: TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w700,
+            color: nearLimit
+                ? AppTheme.redPink
+                : AppTheme.darkGray.withOpacity(0.32),
+          ),
         ),
       ),
     );
@@ -492,19 +688,19 @@ class _AddForumScreenState extends State<AddForumScreen>
     return FadeTransition(
       opacity: _imageFade,
       child: Container(
-        margin: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+        margin: const EdgeInsets.fromLTRB(14, 12, 14, 0),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(22),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 6),
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 22,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(22),
           child: Stack(
             children: [
               GestureDetector(
@@ -515,7 +711,7 @@ class _AddForumScreenState extends State<AddForumScreen>
                 child: Image.file(
                   _pickedImage!,
                   width: double.infinity,
-                  height: 260,
+                  height: 270,
                   fit: BoxFit.cover,
                 ),
               ),
@@ -523,7 +719,7 @@ class _AddForumScreenState extends State<AddForumScreen>
                 top: 0,
                 left: 0,
                 right: 0,
-                height: 80,
+                height: 84,
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -541,14 +737,14 @@ class _AddForumScreenState extends State<AddForumScreen>
                 bottom: 0,
                 left: 0,
                 right: 0,
-                height: 60,
+                height: 64,
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.bottomCenter,
                       end: Alignment.topCenter,
                       colors: [
-                        Colors.black.withOpacity(0.35),
+                        Colors.black.withOpacity(0.4),
                         Colors.transparent,
                       ],
                     ),
@@ -556,8 +752,8 @@ class _AddForumScreenState extends State<AddForumScreen>
                 ),
               ),
               Positioned(
-                top: 10,
-                right: 10,
+                top: 12,
+                right: 12,
                 child: Row(
                   children: [
                     _glassIconBtn(
@@ -574,37 +770,34 @@ class _AddForumScreenState extends State<AddForumScreen>
                 ),
               ),
               Positioned(
-                bottom: 10,
-                left: 12,
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.45),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                            color: Colors.white.withOpacity(0.15), width: 1),
+                bottom: 12,
+                left: 14,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 11, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: Colors.white.withOpacity(0.15), width: 1),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.zoom_in_rounded,
+                          color: Colors.white, size: 13),
+                      SizedBox(width: 6),
+                      Text(
+                        'Tap to preview',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.2,
+                        ),
                       ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.zoom_in_rounded,
-                              color: Colors.white, size: 12),
-                          SizedBox(width: 5),
-                          Text(
-                            'Tap to preview',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -626,9 +819,9 @@ class _AddForumScreenState extends State<AddForumScreen>
         height: 36,
         decoration: BoxDecoration(
           color: tint != null
-              ? tint.withOpacity(0.85)
+              ? tint.withOpacity(0.88)
               : Colors.black.withOpacity(0.5),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(11),
           border: Border.all(
             color: Colors.white.withOpacity(0.2),
             width: 1,
@@ -644,12 +837,12 @@ class _AddForumScreenState extends State<AddForumScreen>
       margin: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 3),
+            color: AppTheme.darkGray.withOpacity(0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -657,25 +850,25 @@ class _AddForumScreenState extends State<AddForumScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+            padding: const EdgeInsets.fromLTRB(18, 16, 16, 8),
             child: Text(
-              'Add to your post',
+              'ADD TO YOUR POST',
               style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.darkGray.withOpacity(0.45),
-                letterSpacing: 0.4,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.darkGray.withOpacity(0.4),
+                letterSpacing: 0.6,
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
             child: Row(
               children: [
                 _addToPostTile(
                   icon: Icons.photo_library_rounded,
                   label: 'Gallery',
-                  color: const Color(0xFF43A047),
+                  color: const Color(0xFF1E9E6B),
                   onTap: () => _pickImage(ImageSource.gallery),
                 ),
                 _addToPostTile(
@@ -685,14 +878,14 @@ class _AddForumScreenState extends State<AddForumScreen>
                   onTap: () => _pickImage(ImageSource.camera),
                 ),
                 _addToPostTile(
-                  icon: Icons.tag_rounded,
-                  label: 'Tag',
+                  icon: Icons.local_offer_rounded,
+                  label: 'Topic',
                   color: const Color(0xFF8E24AA),
                   onTap: () {},
                 ),
                 _addToPostTile(
-                  icon: Icons.emoji_emotions_rounded,
-                  label: 'Feeling',
+                  icon: Icons.location_on_rounded,
+                  label: 'Location',
                   color: const Color(0xFFF57C00),
                   onTap: () {},
                 ),
@@ -713,21 +906,28 @@ class _AddForumScreenState extends State<AddForumScreen>
     return Expanded(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 10),
           child: Column(
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 46,
+                height: 46,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  gradient: LinearGradient(
+                    colors: [
+                      color.withOpacity(0.16),
+                      color.withOpacity(0.07),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: color, size: 22),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 7),
               Text(
                 label,
                 style: TextStyle(
@@ -743,36 +943,18 @@ class _AddForumScreenState extends State<AddForumScreen>
     );
   }
 
-  Widget _buildBottomPostButton(double bottomInset) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: EdgeInsets.fromLTRB(
-          16, 10, 16, bottomInset > 0 ? bottomInset + 6 : 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          top: BorderSide(
-            color: AppTheme.darkGray.withOpacity(0.08),
-            width: 1,
-          ),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, -3),
-          ),
-        ],
-      ),
+  Widget _buildBottomPostButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: ScaleTransition(
         scale: _postBtnScale,
         child: AnimatedOpacity(
-          opacity: _canPost ? 1.0 : 0.4,
+          opacity: _canPost ? 1.0 : 0.45,
           duration: const Duration(milliseconds: 200),
           child: GestureDetector(
             onTap: _canPost && !_isSubmitting ? _submitPost : null,
             child: Container(
-              height: 52,
+              height: 54,
               width: double.infinity,
               decoration: BoxDecoration(
                 gradient: _canPost
@@ -786,17 +968,17 @@ class _AddForumScreenState extends State<AddForumScreen>
                 )
                     : LinearGradient(
                   colors: [
-                    AppTheme.darkGray.withOpacity(0.25),
-                    AppTheme.darkGray.withOpacity(0.25),
+                    AppTheme.darkGray.withOpacity(0.22),
+                    AppTheme.darkGray.withOpacity(0.22),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(18),
                 boxShadow: _canPost
                     ? [
                   BoxShadow(
-                    color: AppTheme.redPink.withOpacity(0.4),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
+                    color: AppTheme.redPink.withOpacity(0.38),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
                   ),
                 ]
                     : [],
@@ -854,8 +1036,8 @@ class _ImagePickerSheet extends StatelessWidget {
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(30),
-          topRight: Radius.circular(30),
+          topLeft: Radius.circular(32),
+          topRight: Radius.circular(32),
         ),
       ),
       padding: EdgeInsets.fromLTRB(
@@ -875,13 +1057,13 @@ class _ImagePickerSheet extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 46,
+                height: 46,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
                       AppTheme.redPink,
-                      AppTheme.redPink.withOpacity(0.8),
+                      AppTheme.redPink.withOpacity(0.75),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -891,7 +1073,7 @@ class _ImagePickerSheet extends StatelessWidget {
                 child: const Icon(
                   Icons.add_photo_alternate_rounded,
                   color: Colors.white,
-                  size: 22,
+                  size: 23,
                 ),
               ),
               const SizedBox(width: 14),
@@ -917,7 +1099,7 @@ class _ImagePickerSheet extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 26),
           Row(
             children: [
               Expanded(
