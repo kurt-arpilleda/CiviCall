@@ -17,6 +17,7 @@ class ForumPostScreenState extends State<ForumPostScreen> {
   final ApiService _apiService = ApiService();
   List<Map<String, dynamic>> _posts = [];
   bool _isLoading = true;
+  bool _isRefreshing = false;
   String? _error;
 
   @override
@@ -26,14 +27,16 @@ class ForumPostScreenState extends State<ForumPostScreen> {
   }
 
   Future<void> refresh() async {
-    await _loadPosts();
+    await _loadPosts(silent: true);
   }
 
-  Future<void> _loadPosts() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+  Future<void> _loadPosts({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
 
     final res = await _apiService.getForumPosts();
 
@@ -50,6 +53,12 @@ class ForumPostScreenState extends State<ForumPostScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _handlePullRefresh() async {
+    setState(() => _isRefreshing = true);
+    await _loadPosts(silent: true);
+    if (mounted) setState(() => _isRefreshing = false);
   }
 
   String _timeAgo(String dateTimeStr) {
@@ -122,18 +131,22 @@ class ForumPostScreenState extends State<ForumPostScreen> {
           ? _buildEmptyState()
           : RefreshIndicator(
         color: AppTheme.redPink,
-        onRefresh: _loadPosts,
+        onRefresh: _handlePullRefresh,
         child: ListView.builder(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 100),
           itemCount: _posts.length,
-          itemBuilder: (_, i) => _ForumPostCard(
-            post: _posts[i],
-            profileImageProvider: _resolveProfileImage(_posts[i]['photo_url'] as String?),
-            forumImageProvider: _resolveForumImage(_posts[i]['image'] as String?),
-            timeAgo: _timeAgo(_posts[i]['createdAt'] as String),
-            onVoteChanged: _loadPosts,
-            formatCount: _formatCount,
-          ),
+          itemBuilder: (_, i) {
+            final post = _posts[i];
+            final key = ValueKey(post['forumId']);
+            return _ForumPostCard(
+              key: key,
+              post: post,
+              profileImageProvider: _resolveProfileImage(post['photo_url'] as String?),
+              forumImageProvider: _resolveForumImage(post['image'] as String?),
+              timeAgo: _timeAgo(post['createdAt'] as String),
+              formatCount: _formatCount,
+            );
+          },
         ),
       ),
     );
@@ -143,7 +156,7 @@ class ForumPostScreenState extends State<ForumPostScreen> {
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 100),
       itemCount: 4,
-      itemBuilder: (_, __) => _ForumPostCardSkeleton(),
+      itemBuilder: (_, __) => const _ForumPostCardSkeleton(),
     );
   }
 
@@ -267,17 +280,16 @@ class _ForumPostCard extends StatefulWidget {
   final ImageProvider profileImageProvider;
   final ImageProvider forumImageProvider;
   final String timeAgo;
-  final VoidCallback onVoteChanged;
   final String Function(int) formatCount;
 
   const _ForumPostCard({
+    Key? key,
     required this.post,
     required this.profileImageProvider,
     required this.forumImageProvider,
     required this.timeAgo,
-    required this.onVoteChanged,
     required this.formatCount,
-  });
+  }) : super(key: key);
 
   @override
   State<_ForumPostCard> createState() => _ForumPostCardState();
@@ -315,7 +327,30 @@ class _ForumPostCardState extends State<_ForumPostCard> {
       return;
     }
 
-    setState(() => _isVoting = true);
+    final prevUserVote = _userVoteType;
+    final prevUp = _upCount;
+    final prevDown = _downCount;
+
+    setState(() {
+      _isVoting = true;
+      if (prevUserVote == voteType) {
+        _userVoteType = null;
+        if (voteType == 1) {
+          _upCount -= 1;
+        } else {
+          _downCount -= 1;
+        }
+      } else {
+        if (prevUserVote == 1) _upCount -= 1;
+        if (prevUserVote == 0) _downCount -= 1;
+        _userVoteType = voteType;
+        if (voteType == 1) {
+          _upCount += 1;
+        } else {
+          _downCount += 1;
+        }
+      }
+    });
 
     final forumId = widget.post['forumId'] as int;
     final result = await _apiService.voteForumPost(
@@ -323,26 +358,22 @@ class _ForumPostCardState extends State<_ForumPostCard> {
       voteType: voteType,
     );
 
-    if (!mounted) {
-      setState(() => _isVoting = false);
-      return;
-    }
+    if (!mounted) return;
 
     if (result['success'] == true) {
-      final newUpCount = result['upCount'] as int? ?? _upCount;
-      final newDownCount = result['downCount'] as int? ?? _downCount;
-      final newUserVote = result['userVote'] as int?;
-
       setState(() {
-        _upCount = newUpCount;
-        _downCount = newDownCount;
-        _userVoteType = newUserVote;
+        _upCount = result['upCount'] as int? ?? _upCount;
+        _downCount = result['downCount'] as int? ?? _downCount;
+        _userVoteType = result['userVote'] as int?;
         _isVoting = false;
       });
-
-      widget.onVoteChanged();
     } else {
-      setState(() => _isVoting = false);
+      setState(() {
+        _upCount = prevUp;
+        _downCount = prevDown;
+        _userVoteType = prevUserVote;
+        _isVoting = false;
+      });
       _showSnackBar(result['message'] ?? 'Failed to vote.');
     }
   }
@@ -363,24 +394,33 @@ class _ForumPostCardState extends State<_ForumPostCard> {
       ),
     );
   }
+
+  void _handleCommentTap() {
+    // Placeholder - comment feature not implemented yet.
+  }
+
   @override
   Widget build(BuildContext context) {
     final firstName = widget.post['firstName'] as String? ?? '';
     final lastName = widget.post['lastName'] as String? ?? '';
     final fullName = '$firstName $lastName'.trim();
+    final rawCampusName = (widget.post['campusName'] as String? ?? '').trim();
+    final campusName = rawCampusName.isNotEmpty ? rawCampusName : 'Campus Community';
     final message = widget.post['message'] as String? ?? '';
     final hasImage = widget.post['image'] != null && widget.post['image'].toString().isNotEmpty;
+    final commentCount = widget.post['commentCount'] as int? ?? 0;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.black.withOpacity(0.04)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 3),
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -388,7 +428,7 @@ class _ForumPostCardState extends State<_ForumPostCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: Row(
               children: [
                 GestureDetector(
@@ -398,12 +438,12 @@ class _ForumPostCardState extends State<_ForumPostCard> {
                     } catch (_) {}
                   },
                   child: Container(
-                    width: 40,
-                    height: 40,
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: AppTheme.redPink.withOpacity(0.15),
+                        color: AppTheme.redPink.withOpacity(0.18),
                         width: 1.5,
                       ),
                       color: AppTheme.redPink.withOpacity(0.08),
@@ -416,7 +456,7 @@ class _ForumPostCardState extends State<_ForumPostCard> {
                           color: AppTheme.redPink.withOpacity(0.08),
                           child: Icon(
                             Icons.person_rounded,
-                            size: 22,
+                            size: 26,
                             color: AppTheme.redPink.withOpacity(0.4),
                           ),
                         ),
@@ -424,7 +464,7 @@ class _ForumPostCardState extends State<_ForumPostCard> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -432,7 +472,7 @@ class _ForumPostCardState extends State<_ForumPostCard> {
                       Text(
                         fullName.isEmpty ? 'Unknown User' : fullName,
                         style: const TextStyle(
-                          fontSize: 14,
+                          fontSize: 14.5,
                           fontWeight: FontWeight.w700,
                           color: AppTheme.darkGray,
                           letterSpacing: 0.1,
@@ -440,7 +480,7 @@ class _ForumPostCardState extends State<_ForumPostCard> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 3),
                       Row(
                         children: [
                           Text(
@@ -461,12 +501,22 @@ class _ForumPostCardState extends State<_ForumPostCard> {
                             ),
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            'Public',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppTheme.darkGray.withOpacity(0.3),
-                              fontWeight: FontWeight.w500,
+                          Icon(
+                            Icons.school_outlined,
+                            size: 12,
+                            color: AppTheme.redPink.withOpacity(0.55),
+                          ),
+                          const SizedBox(width: 3),
+                          Expanded(
+                            child: Text(
+                              campusName,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppTheme.redPink.withOpacity(0.75),
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -479,7 +529,7 @@ class _ForumPostCardState extends State<_ForumPostCard> {
           ),
           if (message.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
               child: Text(
                 message,
                 style: const TextStyle(
@@ -498,10 +548,7 @@ class _ForumPostCardState extends State<_ForumPostCard> {
                 } catch (_) {}
               },
               child: ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(18),
-                  bottomRight: Radius.circular(18),
-                ),
+                borderRadius: BorderRadius.zero,
                 child: Image(
                   image: widget.forumImageProvider,
                   width: double.infinity,
@@ -520,28 +567,43 @@ class _ForumPostCardState extends State<_ForumPostCard> {
               ),
             ),
           ],
+          const SizedBox(height: 6),
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: AppTheme.darkGray.withOpacity(0.06),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
             child: Row(
               children: [
                 _VoteButton(
-                  icon: Icons.arrow_upward_rounded,
+                  icon: Icons.arrow_circle_up_rounded,
                   isActive: _userVoteType == 1,
                   count: _upCount,
                   formatCount: widget.formatCount,
                   onTap: () => _handleVote(1),
                   isLoading: _isVoting,
-                  color: Colors.green,
+                  color: const Color(0xFF2E7D5E),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 _VoteButton(
-                  icon: Icons.arrow_downward_rounded,
+                  icon: Icons.arrow_circle_down_rounded,
                   isActive: _userVoteType == 0,
                   count: _downCount,
                   formatCount: widget.formatCount,
                   onTap: () => _handleVote(0),
                   isLoading: _isVoting,
-                  color: Colors.red,
+                  color: AppTheme.redPink,
+                ),
+                const Spacer(),
+                _CommentButton(
+                  count: commentCount,
+                  formatCount: widget.formatCount,
+                  onTap: _handleCommentTap,
                 ),
               ],
             ),
@@ -575,30 +637,79 @@ class _VoteButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: isLoading ? null : onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: isActive ? color.withOpacity(0.12) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isActive ? color : Colors.transparent,
-            width: 1,
+            color: isActive ? color : AppTheme.darkGray.withOpacity(0.12),
+            width: 1.2,
           ),
         ),
         child: Row(
           children: [
             Icon(
               icon,
-              size: 18,
-              color: isActive ? color : AppTheme.darkGray.withOpacity(0.35),
+              size: 20,
+              color: isActive ? color : AppTheme.darkGray.withOpacity(0.4),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 5),
             Text(
               formatCount(count),
               style: TextStyle(
                 fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: isActive ? color : AppTheme.darkGray.withOpacity(0.5),
+                fontWeight: FontWeight.w700,
+                color: isActive ? color : AppTheme.darkGray.withOpacity(0.55),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CommentButton extends StatelessWidget {
+  final int count;
+  final String Function(int) formatCount;
+  final VoidCallback onTap;
+
+  const _CommentButton({
+    required this.count,
+    required this.formatCount,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: AppTheme.darkGray.withOpacity(0.12),
+            width: 1.2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.mode_comment_outlined,
+              size: 18,
+              color: AppTheme.darkGray.withOpacity(0.4),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              formatCount(count),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.darkGray.withOpacity(0.55),
               ),
             ),
           ],
@@ -609,18 +720,21 @@ class _VoteButton extends StatelessWidget {
 }
 
 class _ForumPostCardSkeleton extends StatelessWidget {
+  const _ForumPostCardSkeleton();
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.black.withOpacity(0.04)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 3),
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -628,18 +742,20 @@ class _ForumPostCardSkeleton extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: Row(
               children: [
-                SkeletonCircle(size: 40),
-                const SizedBox(width: 10),
+                const SkeletonCircle(size: 48),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SkeletonBox(width: 140, height: 14, borderRadius: 6),
+                      const SkeletonBox(width: 140, height: 14, borderRadius: 6),
                       const SizedBox(height: 6),
-                      SkeletonBox(width: 80, height: 11, borderRadius: 5),
+                      const SkeletonBox(width: 90, height: 11, borderRadius: 5),
+                      const SizedBox(height: 6),
+                      const SkeletonBox(width: 70, height: 10, borderRadius: 5),
                     ],
                   ),
                 ),
@@ -647,20 +763,33 @@ class _ForumPostCardSkeleton extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+              children: const [
                 SkeletonBox(width: double.infinity, height: 14, borderRadius: 6),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 SkeletonBox(width: 200, height: 14, borderRadius: 6),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 SkeletonBox(width: 160, height: 14, borderRadius: 6),
               ],
             ),
           ),
           const SizedBox(height: 10),
-          SkeletonBox(width: double.infinity, height: 280, borderRadius: 0),
+          const SkeletonBox(width: double.infinity, height: 280, borderRadius: 0),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: const [
+                SkeletonBox(width: 64, height: 30, borderRadius: 20),
+                SizedBox(width: 8),
+                SkeletonBox(width: 64, height: 30, borderRadius: 20),
+                Spacer(),
+                SkeletonBox(width: 50, height: 30, borderRadius: 20),
+              ],
+            ),
+          ),
         ],
       ),
     );
