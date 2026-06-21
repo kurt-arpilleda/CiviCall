@@ -30,6 +30,10 @@ class _AddForumScreenState extends State<AddForumScreen>
   Map<String, dynamic>? _userData;
   bool _isLoadingUser = true;
 
+  List<Map<String, dynamic>> _campuses = [];
+  Set<int> _selectedCampusIds = {};
+  int? _userCampusId;
+
   late AnimationController _postBtnAnim;
   late Animation<double> _postBtnScale;
   late AnimationController _imageAnim;
@@ -65,16 +69,25 @@ class _AddForumScreenState extends State<AddForumScreen>
     ).animate(CurvedAnimation(parent: _entranceAnim, curve: Curves.easeOutCubic));
 
     _messageController.addListener(_onTextChanged);
-    _loadUser();
+    _loadUserAndCampuses();
     _entranceAnim.forward();
   }
 
-  Future<void> _loadUser() async {
-    final res = await _apiService.getUserData();
+  Future<void> _loadUserAndCampuses() async {
+    final userRes = await _apiService.getUserData();
+    final campusRes = await _apiService.fetchCampus();
+
     if (mounted) {
       setState(() {
-        if (res['success'] == true) {
-          _userData = res['user'] as Map<String, dynamic>?;
+        if (userRes['success'] == true) {
+          _userData = userRes['user'] as Map<String, dynamic>?;
+          _userCampusId = _userData?['campusId'] as int?;
+          if (_userCampusId != null) {
+            _selectedCampusIds.add(_userCampusId!);
+          }
+        }
+        if (campusRes['success'] == true) {
+          _campuses = List<Map<String, dynamic>>.from(campusRes['campuses'] ?? []);
         }
         _isLoadingUser = false;
       });
@@ -157,15 +170,19 @@ class _AddForumScreenState extends State<AddForumScreen>
   }
 
   bool get _canPost =>
-      _messageController.text.trim().isNotEmpty || _pickedImage != null;
+      (_messageController.text.trim().isNotEmpty || _pickedImage != null) &&
+          _selectedCampusIds.isNotEmpty;
 
   Future<void> _submitPost() async {
     if (!_canPost || _isSubmitting) return;
     setState(() => _isSubmitting = true);
     FocusScope.of(context).unfocus();
 
+    final campusStr = _selectedCampusIds.join(',');
+
     final res = await _apiService.createForumPost(
       message: _messageController.text.trim(),
+      campus: campusStr,
       imageFile: _pickedImage,
     );
 
@@ -244,6 +261,158 @@ class _AddForumScreenState extends State<AddForumScreen>
           _pickImage(ImageSource.gallery);
         },
       ),
+    );
+  }
+
+  void _showCampusPicker() {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        Set<int> tempSelected = Set.from(_selectedCampusIds);
+        return StatefulBuilder(
+          builder: (ctx, setS) => Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 30,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 12, 18),
+                    decoration: const BoxDecoration(
+                      color: AppTheme.redPink,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(24),
+                        topRight: Radius.circular(24),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.school_rounded, color: Colors.white, size: 18),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Select Target Campus',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.45,
+                    ),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _campuses.length,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemBuilder: (_, i) {
+                        final campus = _campuses[i];
+                        final id = campus['campusId'] as int;
+                        final name = campus['campusName'] as String;
+                        final isUserCampus = id == _userCampusId;
+                        final isSelected = tempSelected.contains(id);
+                        return CheckboxListTile(
+                          value: isSelected,
+                          onChanged: isUserCampus
+                              ? null
+                              : (val) {
+                            setS(() {
+                              if (val == true) {
+                                tempSelected.add(id);
+                              } else {
+                                tempSelected.remove(id);
+                              }
+                            });
+                          },
+                          title: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  name,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: isUserCampus ? FontWeight.w700 : FontWeight.w500,
+                                    color: AppTheme.darkGray,
+                                  ),
+                                ),
+                              ),
+                              if (isUserCampus)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.redPink.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text(
+                                    'Your Campus',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: AppTheme.redPink,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          activeColor: AppTheme.redPink,
+                          controlAffinity: ListTileControlAffinity.leading,
+                        );
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() => _selectedCampusIds = tempSelected);
+                        Navigator.pop(ctx);
+                        _syncPostButton();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.redPink,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 48),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        elevation: 0,
+                      ),
+                      child: const Text('Confirm Selection', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -436,6 +605,7 @@ class _AddForumScreenState extends State<AddForumScreen>
           _buildAuthorRow(),
           _buildTextField(),
           _buildCharCounter(),
+          _buildCampusSelector(),
           const SizedBox(height: 10),
         ],
       ),
@@ -497,8 +667,7 @@ class _AddForumScreenState extends State<AddForumScreen>
                   ),
                 )
                     : Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 9, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppTheme.redPink.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(20),
@@ -684,6 +853,110 @@ class _AddForumScreenState extends State<AddForumScreen>
     );
   }
 
+  Widget _buildCampusSelector() {
+    final selectedNames = _campuses
+        .where((c) => _selectedCampusIds.contains(c['campusId'] as int))
+        .map((c) => c['campusName'] as String)
+        .toList();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Target Campus',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.darkGray.withOpacity(0.5),
+                ),
+              ),
+              const SizedBox(width: 3),
+              Text(
+                '*',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.redPink,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          GestureDetector(
+            onTap: _showCampusPicker,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: selectedNames.isNotEmpty
+                    ? AppTheme.redPink.withOpacity(0.04)
+                    : const Color(0xFFF8F9FB),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: selectedNames.isNotEmpty
+                      ? AppTheme.redPink.withOpacity(0.35)
+                      : AppTheme.darkGray.withOpacity(0.12),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.school_outlined,
+                    color: selectedNames.isNotEmpty
+                        ? AppTheme.redPink
+                        : AppTheme.darkGray.withOpacity(0.45),
+                    size: 18,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: selectedNames.isEmpty
+                        ? Text(
+                      'Select target campus',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.darkGray.withOpacity(0.38),
+                      ),
+                    )
+                        : Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: selectedNames
+                          .map((name) => Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppTheme.redPink.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          name,
+                          style: const TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.redPink,
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ))
+                          .toList(),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: AppTheme.darkGray.withOpacity(0.45),
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildImagePreviewCard() {
     return FadeTransition(
       opacity: _imageFade,
@@ -773,19 +1046,16 @@ class _AddForumScreenState extends State<AddForumScreen>
                 bottom: 12,
                 left: 14,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 11, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.black.withOpacity(0.5),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: Colors.white.withOpacity(0.15), width: 1),
+                    border: Border.all(color: Colors.white.withOpacity(0.15), width: 1),
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.zoom_in_rounded,
-                          color: Colors.white, size: 13),
+                      Icon(Icons.zoom_in_rounded, color: Colors.white, size: 13),
                       SizedBox(width: 6),
                       Text(
                         'Tap to preview',
@@ -878,10 +1148,10 @@ class _AddForumScreenState extends State<AddForumScreen>
                   onTap: () => _pickImage(ImageSource.camera),
                 ),
                 _addToPostTile(
-                  icon: Icons.local_offer_rounded,
-                  label: 'Topic',
-                  color: const Color(0xFF8E24AA),
-                  onTap: () {},
+                  icon: Icons.school_rounded,
+                  label: 'Campus',
+                  color: AppTheme.redPink,
+                  onTap: _showCampusPicker,
                 ),
                 _addToPostTile(
                   icon: Icons.location_on_rounded,

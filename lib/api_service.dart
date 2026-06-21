@@ -656,11 +656,9 @@ class ApiService {
       return _handleResponse(response);
     });
   }
-  // api_service.dart - Add these methods inside ApiService class
-
-// Add this method to ApiService class
   Future<Map<String, dynamic>> createForumPost({
     required String message,
+    required String campus,
     File? imageFile,
   }) async {
     return _executeWithRetry(() async {
@@ -670,6 +668,7 @@ class ApiService {
       final request = http.MultipartRequest('POST', uri);
       request.fields['authToken'] = token;
       request.fields['message'] = message;
+      request.fields['campus'] = campus;
 
       if (imageFile != null) {
         request.files.add(
@@ -682,8 +681,6 @@ class ApiService {
       return _handleStreamResponse(streamed, body);
     });
   }
-
-// Add this method to ApiService class
   Future<Map<String, dynamic>> getForumPosts() async {
     return _executeWithRetry(() async {
       final token = await _secureStorage.read(key: 'authToken') ?? '';
