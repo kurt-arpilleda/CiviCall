@@ -404,8 +404,7 @@ class _ForumPostCardState extends State<_ForumPostCard> {
     final firstName = widget.post['firstName'] as String? ?? '';
     final lastName = widget.post['lastName'] as String? ?? '';
     final fullName = '$firstName $lastName'.trim();
-    final rawCampusName = (widget.post['campusName'] as String? ?? '').trim();
-    final campusName = rawCampusName.isNotEmpty ? rawCampusName : 'Campus Community';
+    final campusName = (widget.post['campusName'] as String? ?? '').trim();
     final message = widget.post['message'] as String? ?? '';
     final hasImage = widget.post['image'] != null && widget.post['image'].toString().isNotEmpty;
     final commentCount = widget.post['commentCount'] as int? ?? 0;
@@ -509,7 +508,7 @@ class _ForumPostCardState extends State<_ForumPostCard> {
                           const SizedBox(width: 3),
                           Expanded(
                             child: Text(
-                              campusName,
+                              campusName.isNotEmpty ? campusName : 'Campus Community',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: AppTheme.redPink.withOpacity(0.75),
