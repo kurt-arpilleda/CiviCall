@@ -712,6 +712,42 @@ class ApiService {
       return _handleResponse(response);
     });
   }
+  Future<Map<String, dynamic>> addForumComment({
+    required int forumId,
+    required String commentText,
+  }) async {
+    return _executeWithRetry(() async {
+      final token = await _secureStorage.read(key: 'authToken') ?? '';
+      final uri = Uri.parse("${apiUrl}civicall_add_forum_comment.php");
+      final response = await httpClient.post(
+        uri,
+        body: {
+          'authToken': token,
+          'forumId': forumId.toString(),
+          'commentText': commentText,
+        },
+      ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
+
+  Future<Map<String, dynamic>> getForumComments({
+    required int forumId,
+  }) async {
+    return _executeWithRetry(() async {
+      final token = await _secureStorage.read(key: 'authToken') ?? '';
+      final uri = Uri.parse("${apiUrl}civicall_get_forum_comments.php");
+      final response = await httpClient.post(
+        uri,
+        body: {
+          'authToken': token,
+          'forumId': forumId.toString(),
+        },
+      ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
+
   Future<void> saveAuthToken(String token) async {
     await _secureStorage.write(key: 'authToken', value: token);
   }

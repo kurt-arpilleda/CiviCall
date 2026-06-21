@@ -3,6 +3,7 @@ import 'package:civicall/theme/app_theme.dart';
 import 'package:civicall/api_service.dart';
 import 'package:civicall/anim/skeletonAnimation.dart';
 import 'package:civicall/imageViewer.dart';
+import 'package:civicall/forum/forumCommentPost.dart';
 import 'package:intl/intl.dart';
 
 class ForumPostScreen extends StatefulWidget {
@@ -300,6 +301,7 @@ class _ForumPostCardState extends State<_ForumPostCard> {
   int? _userVoteType;
   int _upCount = 0;
   int _downCount = 0;
+  int _commentCount = 0;
 
   @override
   void initState() {
@@ -307,6 +309,7 @@ class _ForumPostCardState extends State<_ForumPostCard> {
     _upCount = widget.post['upCount'] as int? ?? 0;
     _downCount = widget.post['downCount'] as int? ?? 0;
     _userVoteType = widget.post['userVoteType'] as int?;
+    _commentCount = widget.post['commentCount'] as int? ?? 0;
   }
 
   Future<void> _handleVote(int voteType) async {
@@ -394,8 +397,24 @@ class _ForumPostCardState extends State<_ForumPostCard> {
     );
   }
 
-  void _handleCommentTap() {
-    // Placeholder - comment feature not implemented yet.
+  Future<void> _handleCommentTap() async {
+    final updatedPost = Map<String, dynamic>.from(widget.post);
+    updatedPost['upCount'] = _upCount;
+    updatedPost['downCount'] = _downCount;
+    updatedPost['userVoteType'] = _userVoteType;
+    updatedPost['commentCount'] = _commentCount;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ForumCommentPostScreen(
+          post: updatedPost,
+          onCommentCountChanged: (newCount) {
+            if (mounted) setState(() => _commentCount = newCount);
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -406,7 +425,6 @@ class _ForumPostCardState extends State<_ForumPostCard> {
     final campusName = (widget.post['campusName'] as String? ?? '').trim();
     final message = widget.post['message'] as String? ?? '';
     final hasImage = widget.post['image'] != null && widget.post['image'].toString().isNotEmpty;
-    final commentCount = widget.post['commentCount'] as int? ?? 0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -597,9 +615,9 @@ class _ForumPostCardState extends State<_ForumPostCard> {
                   isLoading: _isVoting,
                   color: AppTheme.redPink,
                 ),
-                const Spacer(),
+                const SizedBox(width: 6),
                 _CommentButton(
-                  count: commentCount,
+                  count: _commentCount,
                   formatCount: widget.formatCount,
                   onTap: _handleCommentTap,
                 ),
