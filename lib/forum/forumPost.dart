@@ -312,6 +312,19 @@ class _ForumPostCardState extends State<_ForumPostCard> {
     _commentCount = widget.post['commentCount'] as int? ?? 0;
   }
 
+  @override
+  void didUpdateWidget(_ForumPostCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_isVoting) return;
+    if (oldWidget.post == widget.post) return;
+    setState(() {
+      _upCount = widget.post['upCount'] as int? ?? _upCount;
+      _downCount = widget.post['downCount'] as int? ?? _downCount;
+      _userVoteType = widget.post['userVoteType'] as int?;
+      _commentCount = widget.post['commentCount'] as int? ?? _commentCount;
+    });
+  }
+
   Future<void> _handleVote(int voteType) async {
     if (_isVoting) return;
 
@@ -411,6 +424,15 @@ class _ForumPostCardState extends State<_ForumPostCard> {
           post: updatedPost,
           onCommentCountChanged: (newCount) {
             if (mounted) setState(() => _commentCount = newCount);
+          },
+          onVoteChanged: (upCount, downCount, userVoteType) {
+            if (mounted) {
+              setState(() {
+                _upCount = upCount;
+                _downCount = downCount;
+                _userVoteType = userVoteType;
+              });
+            }
           },
         ),
       ),

@@ -9,11 +9,13 @@ import 'package:intl/intl.dart';
 class ForumCommentPostScreen extends StatefulWidget {
   final Map<String, dynamic> post;
   final ValueChanged<int>? onCommentCountChanged;
+  final void Function(int upCount, int downCount, int? userVoteType)? onVoteChanged;
 
   const ForumCommentPostScreen({
     Key? key,
     required this.post,
     this.onCommentCountChanged,
+    this.onVoteChanged,
   }) : super(key: key);
 
   @override
@@ -205,6 +207,7 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> {
         _userVoteType = result['userVote'] as int?;
         _isVoting = false;
       });
+      widget.onVoteChanged?.call(_upCount, _downCount, _userVoteType);
     } else {
       setState(() {
         _upCount = prevUp;
