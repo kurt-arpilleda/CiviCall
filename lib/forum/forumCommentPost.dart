@@ -5,6 +5,7 @@ import 'package:civicall/anim/skeletonAnimation.dart';
 import 'package:civicall/imageViewer.dart';
 import 'package:civicall/addDrawer/addForumComments.dart';
 import 'package:intl/intl.dart';
+import 'package:civicall/anim/scroll_aware_header.dart';
 
 class ForumCommentPostScreen extends StatefulWidget {
   final Map<String, dynamic> post;
@@ -22,7 +23,7 @@ class ForumCommentPostScreen extends StatefulWidget {
   State<ForumCommentPostScreen> createState() => _ForumCommentPostScreenState();
 }
 
-class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> {
+class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> with TickerProviderStateMixin {
   final ApiService _apiService = ApiService();
 
   Map<String, dynamic>? _post;
@@ -34,14 +35,24 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> {
   int _upCount = 0;
   int _downCount = 0;
 
+  final HeaderVisibilityController _headerVisibility = HeaderVisibilityController();
+  static const double _appBarHeight = kToolbarHeight;
+
   @override
   void initState() {
     super.initState();
+    _headerVisibility.attachTicker(this);
     _post = widget.post;
     _userVoteType = widget.post['userVoteType'] as int?;
     _upCount = widget.post['upCount'] as int? ?? 0;
     _downCount = widget.post['downCount'] as int? ?? 0;
     _loadComments();
+  }
+
+  @override
+  void dispose() {
+    _headerVisibility.dispose();
+    super.dispose();
   }
 
   Future<void> _loadComments({bool silent = false}) async {
@@ -240,46 +251,66 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> {
   Widget build(BuildContext context) {
     final post = _post ?? widget.post;
     final commentCount = post['commentCount'] as int? ?? _comments.length;
+    final topPadding = MediaQuery.of(context).padding.top;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F5F9),
-      appBar: AppBar(
-        backgroundColor: AppTheme.redPink,
-        elevation: 0,
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text(
-          'Post',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 17,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ),
-      body: _isLoading
-          ? _buildSkeletonView()
-          : _error != null
-          ? _buildErrorState()
-          : RefreshIndicator(
-        color: AppTheme.redPink,
-        onRefresh: () => _loadComments(silent: true),
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 100),
-          children: [
-            _buildPostCard(post),
-            const SizedBox(height: 14),
-            _buildCommentsHeader(commentCount),
-            const SizedBox(height: 8),
-            if (_comments.isEmpty)
-              _buildNoCommentsState()
-            else
-              ..._comments.map((c) => _CommentTile(
-                comment: c,
-                timeAgo: _timeAgo(c['createdAt'] as String?),
-                profileImageProvider: _resolveProfileImage(c['photo_url'] as String?),
-              )),
-          ],
+      body: HeaderVisibilityScope(
+        controller: _headerVisibility,
+        child: ValueListenableBuilder<double>(
+          valueListenable: _headerVisibility,
+          builder: (context, collapseFraction, _) {
+            final headerHeight = topPadding + _appBarHeight;
+            _headerVisibility.headerHeight = headerHeight;
+            final hiddenOffset = headerHeight * collapseFraction;
+
+            return Stack(
+              children: [
+                Positioned(
+                  top: headerHeight - hiddenOffset,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: _isLoading
+                      ? _buildSkeletonView()
+                      : _error != null
+                      ? _buildErrorState()
+                      : RefreshIndicator(
+                    color: AppTheme.redPink,
+                    onRefresh: () => _loadComments(silent: true),
+                    child: HeaderScrollListener(
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(0, 0, 0, 100),
+                        children: [
+                          _buildPostCard(post),
+                          const SizedBox(height: 14),
+                          _buildCommentsHeader(commentCount),
+                          const SizedBox(height: 8),
+                          if (_comments.isEmpty)
+                            _buildNoCommentsState()
+                          else
+                            ..._comments.map((c) => _CommentTile(
+                              comment: c,
+                              timeAgo: _timeAgo(c['createdAt'] as String?),
+                              profileImageProvider: _resolveProfileImage(c['photo_url'] as String?),
+                            )),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: -hiddenOffset,
+                  left: 0,
+                  right: 0,
+                  child: Opacity(
+                    opacity: (1.0 - collapseFraction * 1.15).clamp(0.0, 1.0),
+                    child: _buildAppBar(topPadding),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -294,13 +325,46 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> {
     );
   }
 
+  Widget _buildAppBar(double topPadding) {
+    return Container(
+      padding: EdgeInsets.only(top: topPadding),
+      height: topPadding + _appBarHeight,
+      decoration: const BoxDecoration(
+        color: AppTheme.redPink,
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+          const Expanded(
+            child: Text(
+              'Post',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(width: 48),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSkeletonView() {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 100),
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 100),
       children: const [
         _PostCardSkeleton(),
         SizedBox(height: 14),
-        SkeletonBox(width: 120, height: 14, borderRadius: 6),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: SkeletonBox(width: 120, height: 14, borderRadius: 6),
+        ),
         SizedBox(height: 12),
         _CommentTileSkeleton(),
         _CommentTileSkeleton(),
@@ -420,7 +484,7 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> {
 
   Widget _buildCommentsHeader(int commentCount) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
           Icon(
@@ -453,17 +517,13 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> {
     final forumImageProvider = _resolveForumImage(post['image'] as String?);
 
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black.withOpacity(0.04)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 18,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border(
+          top: BorderSide(color: AppTheme.darkGray.withOpacity(0.08), width: 1),
+          bottom: BorderSide(color: AppTheme.darkGray.withOpacity(0.08), width: 1),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -588,21 +648,18 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> {
                   showFullScreenImage(context, forumImageProvider);
                 } catch (_) {}
               },
-              child: ClipRRect(
-                borderRadius: BorderRadius.zero,
-                child: Image(
-                  image: forumImageProvider,
-                  width: double.infinity,
+              child: Image(
+                image: forumImageProvider,
+                width: double.infinity,
+                height: 280,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
                   height: 280,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    height: 280,
-                    color: Colors.grey.shade100,
-                    child: Icon(
-                      Icons.image_not_supported_rounded,
-                      size: 40,
-                      color: Colors.grey.shade300,
-                    ),
+                  color: Colors.grey.shade100,
+                  child: Icon(
+                    Icons.image_not_supported_rounded,
+                    size: 40,
+                    color: Colors.grey.shade300,
                   ),
                 ),
               ),
@@ -647,7 +704,6 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> {
       ),
     );
   }
-
 }
 
 class _VoteButton extends StatelessWidget {
@@ -727,19 +783,13 @@ class _CommentTile extends StatelessWidget {
     final commentText = comment['commentText'] as String? ?? '';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.black.withOpacity(0.04)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        border: Border(
+          bottom: BorderSide(color: AppTheme.darkGray.withOpacity(0.06), width: 1),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -852,10 +902,13 @@ class _PostCardSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black.withOpacity(0.04)),
+        border: Border(
+          top: BorderSide(color: AppTheme.darkGray.withOpacity(0.08), width: 1),
+          bottom: BorderSide(color: AppTheme.darkGray.withOpacity(0.08), width: 1),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -882,6 +935,8 @@ class _PostCardSkeleton extends StatelessWidget {
             const SkeletonBox(width: double.infinity, height: 14, borderRadius: 6),
             const SizedBox(height: 6),
             const SkeletonBox(width: 200, height: 14, borderRadius: 6),
+            const SizedBox(height: 10),
+            const SkeletonBox(width: double.infinity, height: 280, borderRadius: 0),
           ],
         ),
       ),
@@ -895,12 +950,13 @@ class _CommentTileSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.black.withOpacity(0.04)),
+        border: Border(
+          bottom: BorderSide(color: AppTheme.darkGray.withOpacity(0.06), width: 1),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
