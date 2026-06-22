@@ -3,7 +3,6 @@ import 'package:civicall/theme/app_theme.dart';
 import 'package:civicall/api_service.dart';
 import 'package:civicall/anim/skeletonAnimation.dart';
 import 'package:civicall/imageViewer.dart';
-import 'package:civicall/addDrawer/addForumComments.dart';
 import 'package:intl/intl.dart';
 import 'package:civicall/anim/scroll_aware_header.dart';
 
@@ -25,15 +24,19 @@ class ForumCommentPostScreen extends StatefulWidget {
 
 class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> with TickerProviderStateMixin {
   final ApiService _apiService = ApiService();
+  final TextEditingController _commentController = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
 
   Map<String, dynamic>? _post;
   List<Map<String, dynamic>> _comments = [];
   bool _isLoading = true;
+  bool _isSubmitting = false;
   String? _error;
   bool _isVoting = false;
   int? _userVoteType;
   int _upCount = 0;
   int _downCount = 0;
+  bool _hasText = false;
 
   final HeaderVisibilityController _headerVisibility = HeaderVisibilityController();
   static const double _appBarHeight = kToolbarHeight;
@@ -46,13 +49,24 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> with Ti
     _userVoteType = widget.post['userVoteType'] as int?;
     _upCount = widget.post['upCount'] as int? ?? 0;
     _downCount = widget.post['downCount'] as int? ?? 0;
+    _commentController.addListener(_onTextChanged);
     _loadComments();
   }
 
   @override
   void dispose() {
+    _commentController.removeListener(_onTextChanged);
+    _commentController.dispose();
+    _focusNode.dispose();
     _headerVisibility.dispose();
     super.dispose();
+  }
+
+  void _onTextChanged() {
+    final hasText = _commentController.text.trim().isNotEmpty;
+    if (hasText != _hasText) {
+      setState(() => _hasText = hasText);
+    }
   }
 
   Future<void> _loadComments({bool silent = false}) async {
@@ -148,17 +162,30 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> with Ti
     return NetworkImage('${ApiService.apiUrl}forumImages/$imageFileName');
   }
 
-  Future<void> _openAddComment() async {
-    if (_post == null) return;
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AddForumCommentScreen(post: _post!),
-      ),
+  Future<void> _submitComment() async {
+    final commentText = _commentController.text.trim();
+    if (commentText.isEmpty || _isSubmitting || _post == null) return;
+
+    setState(() => _isSubmitting = true);
+    _focusNode.unfocus();
+
+    final forumId = _post!['forumId'] as int;
+    final res = await _apiService.addForumComment(
+      forumId: forumId,
+      commentText: commentText,
     );
-    if (result is Map && result['success'] == true) {
-      _loadComments(silent: true);
+
+    if (!mounted) return;
+
+    if (res['success'] == true) {
+      _commentController.clear();
+      _showSnackBar('Comment posted!', isSuccess: true);
+      await _loadComments(silent: true);
+    } else {
+      _showSnackBar(res['message'] ?? 'Failed to post comment.');
     }
+
+    if (mounted) setState(() => _isSubmitting = false);
   }
 
   Future<void> _handleVote(int voteType) async {
@@ -230,17 +257,21 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> with Ti
     }
   }
 
-  void _showSnackBar(String message) {
+  void _showSnackBar(String message, {bool isSuccess = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.info_outline_rounded, color: Colors.white, size: 18),
+            Icon(
+              isSuccess ? Icons.check_circle_rounded : Icons.info_outline_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
             const SizedBox(width: 10),
             Expanded(child: Text(message)),
           ],
         ),
-        backgroundColor: AppTheme.redPink,
+        backgroundColor: isSuccess ? const Color(0xFF1E9E6B) : AppTheme.redPink,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -252,6 +283,7 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> with Ti
     final post = _post ?? widget.post;
     final commentCount = post['commentCount'] as int? ?? _comments.length;
     final topPadding = MediaQuery.of(context).padding.top;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F5F9),
@@ -270,7 +302,7 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> with Ti
                   top: headerHeight - hiddenOffset,
                   left: 0,
                   right: 0,
-                  bottom: 0,
+                  bottom: 80 + bottomPadding,
                   child: _isLoading
                       ? _buildSkeletonView()
                       : _error != null
@@ -280,7 +312,7 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> with Ti
                     onRefresh: () => _loadComments(silent: true),
                     child: HeaderScrollListener(
                       child: ListView(
-                        padding: const EdgeInsets.fromLTRB(0, 0, 0, 100),
+                        padding: const EdgeInsets.fromLTRB(0, 0, 0, 16),
                         children: [
                           _buildPostCard(post),
                           const SizedBox(height: 14),
@@ -308,18 +340,15 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> with Ti
                     child: _buildAppBar(topPadding),
                   ),
                 ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: _buildCommentInput(bottomPadding),
+                ),
               ],
             );
           },
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openAddComment,
-        backgroundColor: AppTheme.redPink,
-        icon: const Icon(Icons.mode_comment_outlined, color: Colors.white, size: 18),
-        label: const Text(
-          'Comment',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -355,9 +384,79 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> with Ti
     );
   }
 
+  Widget _buildCommentInput(double bottomPadding) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(12, 8, 12, 8 + bottomPadding),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: AppTheme.darkGray.withOpacity(0.08), width: 1),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _commentController,
+              focusNode: _focusNode,
+              decoration: InputDecoration(
+                hintText: 'Write a comment...',
+                hintStyle: TextStyle(
+                  fontSize: 14,
+                  color: AppTheme.darkGray.withOpacity(0.4),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: const Color(0xFFF0F2F5),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                isDense: true,
+              ),
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => _submitComment(),
+              maxLines: null,
+              maxLength: 500,
+              buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: _submitComment,
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: _hasText && !_isSubmitting
+                    ? AppTheme.redPink
+                    : AppTheme.darkGray.withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: _isSubmitting
+                  ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+                  : Icon(
+                Icons.send_rounded,
+                color: _hasText ? Colors.white : AppTheme.darkGray.withOpacity(0.35),
+                size: 20,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSkeletonView() {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(0, 0, 0, 100),
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 16),
       children: const [
         _PostCardSkeleton(),
         SizedBox(height: 14),
