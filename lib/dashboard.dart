@@ -1,4 +1,3 @@
-// dashboard.dart - Complete file with Forum integrated
 import 'dart:ui' as ui;
 import 'package:civicall/addDrawer/addEngagement.dart';
 import 'package:civicall/addDrawer/addForum.dart';
@@ -14,6 +13,7 @@ import 'package:civicall/api_service.dart';
 import 'package:civicall/information/newsArticles.dart';
 import 'package:civicall/drawerNavigation/scheduleCalendar.dart';
 import 'package:civicall/forum/forumPost.dart';
+import 'package:civicall/anim/scroll_aware_header.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -22,7 +22,8 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen>
+    with TickerProviderStateMixin {
   int _selectedIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final ApiService _apiService = ApiService();
@@ -30,6 +31,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   GlobalKey<EngagementFeedScreenState>();
   final GlobalKey<ForumPostScreenState> _forumPostKey =
   GlobalKey<ForumPostScreenState>();
+
+  final HeaderVisibilityController _headerVisibility =
+  HeaderVisibilityController();
+
+  static const double _appBarHeight = kToolbarHeight;
 
   static const List<String> _pageTitles = [
     'Home',
@@ -347,9 +353,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    _headerVisibility.attachTicker(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AutoUpdate.checkForUpdate(context);
     });
+  }
+
+  @override
+  void dispose() {
+    _headerVisibility.dispose();
+    super.dispose();
   }
 
   @override
@@ -357,6 +370,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final pageIndex = _navIndexToPageIndex(_selectedIndex);
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final isGestureNavigation = bottomPadding > 20;
+    final topPadding = MediaQuery.of(context).padding.top;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -367,27 +381,99 @@ class _DashboardScreenState extends State<DashboardScreen> {
         key: _scaffoldKey,
         backgroundColor: const Color(0xFFF5F6FA),
         drawer: const AppDrawer(),
-        appBar: AppBar(
-          backgroundColor: AppTheme.redPink,
-          foregroundColor: AppTheme.white,
-          elevation: 0,
-          centerTitle: true,
-          leading: IconButton(
-            icon: const Icon(Icons.menu_rounded, size: 26),
-            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+        extendBodyBehindAppBar: true,
+        body: HeaderVisibilityScope(
+          controller: _headerVisibility,
+          child: ValueListenableBuilder<double>(
+            valueListenable: _headerVisibility,
+            builder: (context, collapseFraction, _) {
+              final headerHeight = topPadding + _appBarHeight;
+              _headerVisibility.headerHeight = headerHeight;
+
+              // collapseFraction: 0.0 = header fully shown, 1.0 = fully
+              // hidden. Both the header's translation and the body's top
+              // offset are direct functions of this single value, so they
+              // always stay perfectly in sync — no separate animations to
+              // drift apart, just like Facebook's 1:1 drag tracking.
+              final hiddenOffset = headerHeight * collapseFraction;
+
+              return Stack(
+                children: [
+                  // Body's top offset shrinks in lockstep with the header
+                  // as it retracts, so content slides up into the space
+                  // the header vacates instead of leaving a gap.
+                  Positioned(
+                    top: headerHeight - hiddenOffset,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: IndexedStack(
+                      index: pageIndex,
+                      children: [
+                        EngagementFeedScreen(key: _engagementFeedKey),
+                        _pages[1],
+                        ForumPostScreen(key: _forumPostKey),
+                        _pages[3],
+                      ],
+                    ),
+                  ),
+                  // Header slides up by the same amount and fades slightly
+                  // near the end of the travel, so it tucks away smoothly
+                  // rather than abruptly vanishing.
+                  Positioned(
+                    top: -hiddenOffset,
+                    left: 0,
+                    right: 0,
+                    child: Opacity(
+                      opacity: (1.0 - collapseFraction * 1.15).clamp(0.0, 1.0),
+                      child: _buildHeaderBar(context, pageIndex, topPadding),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
-          title: Text(
-            _pageTitles[pageIndex],
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
+        ),
+        bottomNavigationBar: _buildBottomNav(isGestureNavigation),
+        floatingActionButton: _buildTikTokFab(),
+        floatingActionButtonLocation: isGestureNavigation
+            ? FloatingActionButtonLocation.centerDocked
+            : CustomFloatingActionButtonLocation(),
+      ),
+    );
+  }
+
+  Widget _buildHeaderBar(BuildContext context, int pageIndex, double topPadding) {
+    return Container(
+      padding: EdgeInsets.only(top: topPadding),
+      height: topPadding + _appBarHeight,
+      decoration: const BoxDecoration(
+        color: AppTheme.redPink,
+      ),
+      child: SizedBox(
+        height: _appBarHeight,
+        child: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.menu_rounded, size: 26),
               color: AppTheme.white,
-              letterSpacing: 0.2,
+              onPressed: () => _scaffoldKey.currentState?.openDrawer(),
             ),
-          ),
-          actions: [
+            Expanded(
+              child: Text(
+                _pageTitles[pageIndex],
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.white,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
             IconButton(
               icon: const Icon(Icons.search_rounded, size: 24),
+              color: AppTheme.white,
               onPressed: () {
                 if (_selectedIndex == 0 || _navIndexToPageIndex(_selectedIndex) == 0) {
                   showSearch(
@@ -403,20 +489,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ],
         ),
-        body: IndexedStack(
-          index: pageIndex,
-          children: [
-            EngagementFeedScreen(key: _engagementFeedKey),
-            _pages[1],
-            ForumPostScreen(key: _forumPostKey),
-            _pages[3],
-          ],
-        ),
-        bottomNavigationBar: _buildBottomNav(isGestureNavigation),
-        floatingActionButton: _buildTikTokFab(),
-        floatingActionButtonLocation: isGestureNavigation
-            ? FloatingActionButtonLocation.centerDocked
-            : CustomFloatingActionButtonLocation(),
       ),
     );
   }

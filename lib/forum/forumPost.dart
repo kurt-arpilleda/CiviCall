@@ -4,6 +4,7 @@ import 'package:civicall/api_service.dart';
 import 'package:civicall/anim/skeletonAnimation.dart';
 import 'package:civicall/imageViewer.dart';
 import 'package:civicall/forum/forumCommentPost.dart';
+import 'package:civicall/anim/scroll_aware_header.dart';
 import 'package:intl/intl.dart';
 
 class ForumPostScreen extends StatefulWidget {
@@ -132,21 +133,23 @@ class ForumPostScreenState extends State<ForumPostScreen> {
           : RefreshIndicator(
         color: AppTheme.redPink,
         onRefresh: _handlePullRefresh,
-        child: ListView.builder(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 100),
-          itemCount: _posts.length,
-          itemBuilder: (_, i) {
-            final post = _posts[i];
-            final key = ValueKey(post['forumId']);
-            return _ForumPostCard(
-              key: key,
-              post: post,
-              profileImageProvider: _resolveProfileImage(post['photo_url'] as String?),
-              forumImageProvider: _resolveForumImage(post['image'] as String?),
-              timeAgo: _timeAgo(post['createdAt'] as String),
-              formatCount: _formatCount,
-            );
-          },
+        child: HeaderScrollListener(
+          child: ListView.builder(
+            padding: const EdgeInsets.fromLTRB(0, 8, 0, 100),
+            itemCount: _posts.length,
+            itemBuilder: (_, i) {
+              final post = _posts[i];
+              final key = ValueKey(post['forumId']);
+              return _ForumPostCard(
+                key: key,
+                post: post,
+                profileImageProvider: _resolveProfileImage(post['photo_url'] as String?),
+                forumImageProvider: _resolveForumImage(post['image'] as String?),
+                timeAgo: _timeAgo(post['createdAt'] as String),
+                formatCount: _formatCount,
+              );
+            },
+          ),
         ),
       ),
     );
@@ -154,7 +157,7 @@ class ForumPostScreenState extends State<ForumPostScreen> {
 
   Widget _buildSkeletonView() {
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 100),
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 100),
       itemCount: 4,
       itemBuilder: (_, __) => const _ForumPostCardSkeleton(),
     );
@@ -449,18 +452,14 @@ class _ForumPostCardState extends State<_ForumPostCard> {
     final hasImage = widget.post['image'] != null && widget.post['image'].toString().isNotEmpty;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black.withOpacity(0.04)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 18,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border(
+          top: BorderSide(color: AppTheme.darkGray.withOpacity(0.08), width: 1),
+          bottom: BorderSide(color: AppTheme.darkGray.withOpacity(0.08), width: 1),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -763,18 +762,14 @@ class _ForumPostCardSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black.withOpacity(0.04)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 18,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border(
+          top: BorderSide(color: AppTheme.darkGray.withOpacity(0.08), width: 1),
+          bottom: BorderSide(color: AppTheme.darkGray.withOpacity(0.08), width: 1),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
