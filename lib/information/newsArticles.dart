@@ -271,17 +271,45 @@ class _NewsArticlesScreenState extends State<NewsArticlesScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
-      body: NestedScrollView(
-        controller: _scrollController,
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          _buildSliverAppBar(innerBoxIsScrolled),
+      body: Column(
+        children: [
+          // Header with News title and reload button
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+            color: AppTheme.white,
+            child: Row(
+              children: [
+                Icon(
+                  Icons.newspaper_rounded,
+                  color: AppTheme.redPink,
+                  size: 24,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'News',
+                  style: TextStyle(
+                    color: AppTheme.darkGray,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: _fetchNews,
+                  icon: Icon(
+                    Icons.refresh_rounded,
+                    color: AppTheme.darkGray.withOpacity(0.6),
+                    size: 22,
+                  ),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+          ),
+          _buildCategoryBar(),
+          Expanded(child: _buildBody()),
         ],
-        body: Column(
-          children: [
-            _buildCategoryBar(),
-            Expanded(child: _buildBody()),
-          ],
-        ),
       ),
     );
   }
@@ -369,10 +397,10 @@ class _NewsArticlesScreenState extends State<NewsArticlesScreen>
       child: Column(
         children: [
           SizedBox(
-            height: 52,
+            height: 40,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               itemCount: _categories.length,
               separatorBuilder: (_, __) => const SizedBox(width: 8),
               itemBuilder: (context, index) {
@@ -383,27 +411,27 @@ class _NewsArticlesScreenState extends State<NewsArticlesScreen>
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 6),
+                        horizontal: 12, vertical: 4),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? cat.color
                           : cat.color.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           cat.icon,
-                          size: 14,
+                          size: 12,
                           color: isSelected ? AppTheme.white : cat.color,
                         ),
-                        const SizedBox(width: 5),
+                        const SizedBox(width: 4),
                         Text(
                           cat.label,
                           style: TextStyle(
                             color: isSelected ? AppTheme.white : cat.color,
-                            fontSize: 12.5,
+                            fontSize: 11.5,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -415,8 +443,8 @@ class _NewsArticlesScreenState extends State<NewsArticlesScreen>
             ),
           ),
           Divider(
-            height: 1,
-            thickness: 1,
+            height: 0.5,
+            thickness: 0.5,
             color: AppTheme.darkGray.withOpacity(0.07),
           ),
         ],

@@ -475,13 +475,21 @@ class _DashboardScreenState extends State<DashboardScreen>
               icon: const Icon(Icons.search_rounded, size: 24),
               color: AppTheme.white,
               onPressed: () {
-                if (_selectedIndex == 0 || _navIndexToPageIndex(_selectedIndex) == 0) {
+                final pageIndex = _navIndexToPageIndex(_selectedIndex);
+                if (pageIndex == 0) {
                   showSearch(
                     context: context,
                     delegate: EngagementSearchDelegate(
                       engagements: _engagementFeedKey.currentState?.engagements ?? [],
                       currentUserId: _engagementFeedKey.currentState?.currentUserId,
                       onRefresh: () => _engagementFeedKey.currentState?.refresh(),
+                    ),
+                  );
+                } else if (pageIndex == 2) {
+                  showSearch(
+                    context: context,
+                    delegate: ForumSearchDelegate(
+                      posts: _forumPostKey.currentState?.posts ?? [],
                     ),
                   );
                 }

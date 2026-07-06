@@ -27,6 +27,8 @@ class ForumPostScreenState extends State<ForumPostScreen> {
     _loadPosts();
   }
 
+  List<Map<String, dynamic>> get posts => _posts;
+
   Future<void> refresh() async {
     await _loadPosts(silent: true);
   }
@@ -827,4 +829,155 @@ class _ForumPostCardSkeleton extends StatelessWidget {
       ),
     );
   }
+}
+
+class ForumSearchDelegate extends SearchDelegate<void> {
+  final List<Map<String, dynamic>> posts;
+
+  ForumSearchDelegate({required this.posts});
+
+  @override
+  ThemeData appBarTheme(BuildContext context) {
+    return Theme.of(context).copyWith(
+      appBarTheme: const AppBarTheme(
+        backgroundColor: AppTheme.redPink,
+        iconTheme: IconThemeData(color: Colors.white),
+        titleTextStyle: TextStyle(color: Colors.white, fontSize: 18),
+      ),
+      inputDecorationTheme: const InputDecorationTheme(
+        hintStyle: TextStyle(color: Colors.white70),
+      ),
+      textSelectionTheme: const TextSelectionThemeData(cursorColor: Colors.white),
+      textTheme: Theme.of(context).textTheme.copyWith(
+        titleLarge: const TextStyle(color: Colors.white, fontSize: 18),
+      ),
+      primaryTextTheme: Theme.of(context).primaryTextTheme.copyWith(
+        titleLarge: const TextStyle(color: Colors.white, fontSize: 18),
+      ),
+    );
+  }
+
+  @override
+  List<Widget> buildActions(BuildContext context) {
+    return [
+      if (query.isNotEmpty)
+        IconButton(
+          icon: const Icon(Icons.clear),
+          onPressed: () => query = '',
+        ),
+    ];
+  }
+
+  @override
+  Widget buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () => close(context, null),
+    );
+  }
+
+  List<Map<String, dynamic>> _filteredPosts() {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return [];
+    return posts.where((post) {
+      final message = (post['message'] as String? ?? '').toLowerCase();
+      final campusName = (post['campusName'] as String? ?? '').toLowerCase();
+      final firstName = (post['firstName'] as String? ?? '').toLowerCase();
+      final lastName = (post['lastName'] as String? ?? '').toLowerCase();
+      final fullName = '$firstName $lastName'.trim();
+      return message.contains(q) ||
+          campusName.contains(q) ||
+          firstName.contains(q) ||
+          lastName.contains(q) ||
+          fullName.contains(q);
+    }).toList();
+  }
+
+  @override
+  Widget buildResults(BuildContext context) => _buildBody();
+
+  @override
+  Widget buildSuggestions(BuildContext context) => _buildBody();
+
+  Widget _buildBody() {
+    if (query.trim().isEmpty) {
+      return Center(
+        child: Text(
+          'Search by message, campus, or name',
+          style: TextStyle(color: AppTheme.darkGray.withOpacity(0.4)),
+        ),
+      );
+    }
+
+    final results = _filteredPosts();
+
+    if (results.isEmpty) {
+      return Center(
+        child: Text(
+          'No forum posts found',
+          style: TextStyle(color: AppTheme.darkGray.withOpacity(0.4)),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 100),
+      itemCount: results.length,
+      itemBuilder: (_, i) {
+        final post = results[i];
+        return _ForumPostCard(
+          key: ValueKey(post['forumId']),
+          post: post,
+          profileImageProvider: _resolveProfileImageStatic(post['photo_url'] as String?),
+          forumImageProvider: _resolveForumImageStatic(post['image'] as String?),
+          timeAgo: _timeAgoStatic(post['createdAt'] as String? ?? ''),
+          formatCount: _formatCountStatic,
+        );
+      },
+    );
+  }
+}
+
+ImageProvider _resolveProfileImageStatic(String? photoUrl) {
+  if (photoUrl == null || photoUrl.isEmpty) {
+    return const AssetImage('assets/images/default_avatar.png');
+  }
+  if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
+    return NetworkImage(photoUrl);
+  }
+  return NetworkImage('${ApiService.apiUrl}profileImage/$photoUrl');
+}
+
+ImageProvider _resolveForumImageStatic(String? imageFileName) {
+  if (imageFileName == null || imageFileName.isEmpty) {
+    return const AssetImage('assets/images/default_avatar.png');
+  }
+  if (imageFileName.startsWith('http://') || imageFileName.startsWith('https://')) {
+    return NetworkImage(imageFileName);
+  }
+  return NetworkImage('${ApiService.apiUrl}forumImages/$imageFileName');
+}
+
+String _timeAgoStatic(String dateTimeStr) {
+  try {
+    final dateTime = DateTime.parse(dateTimeStr);
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inSeconds < 60) return '${difference.inSeconds}s';
+    if (difference.inMinutes < 60) return '${difference.inMinutes}m';
+    if (difference.inHours < 24) return '${difference.inHours}h';
+    if (difference.inDays < 7) return '${difference.inDays}d';
+    if (difference.inDays < 30) return '${(difference.inDays / 7).floor()}w';
+    if (difference.inDays < 365) return '${(difference.inDays / 30).floor()}mo';
+    return '${(difference.inDays / 365).floor()}y';
+  } catch (_) {
+    return 'just now';
+  }
+}
+
+String _formatCountStatic(int count) {
+  if (count >= 1000000) return '${(count / 1000000).toStringAsFixed(1)}M';
+  if (count >= 1000) return '${(count / 1000).toStringAsFixed(1)}K';
+  return count.toString();
 }

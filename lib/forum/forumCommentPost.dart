@@ -86,6 +86,11 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> with Ti
       setState(() {
         _post = Map<String, dynamic>.from(res['post'] ?? widget.post);
         _comments = List<Map<String, dynamic>>.from(res['comments'] ?? []);
+        _comments.sort((a, b) {
+          final aDate = DateTime.tryParse(a['createdAt'] as String? ?? '') ?? DateTime(1970);
+          final bDate = DateTime.tryParse(b['createdAt'] as String? ?? '') ?? DateTime(1970);
+          return bDate.compareTo(aDate);
+        });
         _isLoading = false;
         if (!_isVoting) {
           _userVoteType = _post?['userVoteType'] as int?;
