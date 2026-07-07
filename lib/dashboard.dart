@@ -61,9 +61,9 @@ class _DashboardScreenState extends State<DashboardScreen>
       _showAddSheet();
       return;
     }
+    _headerVisibility.show();
     setState(() => _selectedIndex = navIndex);
   }
-
   void _showAddSheet() {
     showModalBottomSheet(
       context: context,
