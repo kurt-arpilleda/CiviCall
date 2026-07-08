@@ -747,6 +747,63 @@ class ApiService {
       return _handleResponse(response);
     });
   }
+  Future<Map<String, dynamic>> getNotifications() async {
+    return _executeWithRetry(() async {
+      final token = await _secureStorage.read(key: 'authToken') ?? '';
+      final uri = Uri.parse("${apiUrl}civicall_get_notifications.php");
+      final response = await httpClient.post(
+        uri,
+        body: {'authToken': token},
+      ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
+
+  Future<Map<String, dynamic>> markNotificationRead({
+    required int notifId,
+  }) async {
+    return _executeWithRetry(() async {
+      final token = await _secureStorage.read(key: 'authToken') ?? '';
+      final uri = Uri.parse("${apiUrl}civicall_mark_notification_read.php");
+      final response = await httpClient.post(
+        uri,
+        body: {
+          'authToken': token,
+          'notifId': notifId.toString(),
+        },
+      ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
+
+  Future<Map<String, dynamic>> markAllNotificationsRead() async {
+    return _executeWithRetry(() async {
+      final token = await _secureStorage.read(key: 'authToken') ?? '';
+      final uri = Uri.parse("${apiUrl}civicall_mark_all_notifications_read.php");
+      final response = await httpClient.post(
+        uri,
+        body: {'authToken': token},
+      ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
+
+  Future<Map<String, dynamic>> removeNotification({
+    required int notifId,
+  }) async {
+    return _executeWithRetry(() async {
+      final token = await _secureStorage.read(key: 'authToken') ?? '';
+      final uri = Uri.parse("${apiUrl}civicall_remove_notification.php");
+      final response = await httpClient.post(
+        uri,
+        body: {
+          'authToken': token,
+          'notifId': notifId.toString(),
+        },
+      ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
 
   Future<void> saveAuthToken(String token) async {
     await _secureStorage.write(key: 'authToken', value: token);

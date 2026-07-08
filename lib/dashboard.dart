@@ -14,6 +14,7 @@ import 'package:civicall/information/newsArticles.dart';
 import 'package:civicall/drawerNavigation/scheduleCalendar.dart';
 import 'package:civicall/forum/forumPost.dart';
 import 'package:civicall/anim/scroll_aware_header.dart';
+import 'package:civicall/notification/notification.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -48,7 +49,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     EngagementFeedScreen(),
     NewsArticlesScreen(),
     ForumPostScreen(),
-    _DummyPage(label: 'Notifications', icon: Icons.notifications_outlined),
+    NotificationScreen(),
   ];
 
   int _navIndexToPageIndex(int navIndex) {
