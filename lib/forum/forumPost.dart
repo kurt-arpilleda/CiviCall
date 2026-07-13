@@ -64,6 +64,18 @@ class ForumPostScreenState extends State<ForumPostScreen> {
     if (mounted) setState(() => _isRefreshing = false);
   }
 
+  void _updatePostVote(int forumId, int upCount, int downCount, int? userVoteType) {
+    final idx = _posts.indexWhere((p) => p['forumId'] == forumId);
+    if (idx == -1) return;
+    setState(() {
+      final updated = Map<String, dynamic>.from(_posts[idx]);
+      updated['upCount'] = upCount;
+      updated['downCount'] = downCount;
+      updated['userVoteType'] = userVoteType;
+      _posts[idx] = updated;
+    });
+  }
+
   String _timeAgo(String dateTimeStr) {
     try {
       final dateTime = DateTime.parse(dateTimeStr);
@@ -149,6 +161,8 @@ class ForumPostScreenState extends State<ForumPostScreen> {
                 forumImageProvider: _resolveForumImage(post['image'] as String?),
                 timeAgo: _timeAgo(post['createdAt'] as String),
                 formatCount: _formatCount,
+                onVoteChanged: (upCount, downCount, userVoteType) =>
+                    _updatePostVote(post['forumId'] as int, upCount, downCount, userVoteType),
               );
             },
           ),
@@ -286,6 +300,7 @@ class _ForumPostCard extends StatefulWidget {
   final ImageProvider forumImageProvider;
   final String timeAgo;
   final String Function(int) formatCount;
+  final void Function(int upCount, int downCount, int? userVoteType)? onVoteChanged;
 
   const _ForumPostCard({
     Key? key,
@@ -294,6 +309,7 @@ class _ForumPostCard extends StatefulWidget {
     required this.forumImageProvider,
     required this.timeAgo,
     required this.formatCount,
+    this.onVoteChanged,
   }) : super(key: key);
 
   @override
@@ -371,6 +387,7 @@ class _ForumPostCardState extends State<_ForumPostCard> {
         }
       }
     });
+    widget.onVoteChanged?.call(_upCount, _downCount, _userVoteType);
 
     final forumId = widget.post['forumId'] as int;
     final result = await _apiService.voteForumPost(
@@ -387,6 +404,7 @@ class _ForumPostCardState extends State<_ForumPostCard> {
         _userVoteType = result['userVote'] as int?;
         _isVoting = false;
       });
+      widget.onVoteChanged?.call(_upCount, _downCount, _userVoteType);
     } else {
       setState(() {
         _upCount = prevUp;
@@ -394,6 +412,7 @@ class _ForumPostCardState extends State<_ForumPostCard> {
         _userVoteType = prevUserVote;
         _isVoting = false;
       });
+      widget.onVoteChanged?.call(_upCount, _downCount, _userVoteType);
       _showSnackBar(result['message'] ?? 'Failed to vote.');
     }
   }
@@ -438,6 +457,7 @@ class _ForumPostCardState extends State<_ForumPostCard> {
                 _userVoteType = userVoteType;
               });
             }
+            widget.onVoteChanged?.call(upCount, downCount, userVoteType);
           },
         ),
       ),

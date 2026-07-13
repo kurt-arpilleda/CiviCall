@@ -79,6 +79,96 @@ class _NotificationScreenState extends State<NotificationScreen> {
     }
   }
 
+  Future<void> _openNotificationDetail(Map<String, dynamic> notif) {
+    final notifId = notif['notifId'] as int;
+    if ((notif['notificationStatus'] ?? 0) == 0) {
+      _markAsRead(notifId);
+    }
+    final notifName = (notif['notifName'] ?? 'Notification').toString();
+    final detail = (notif['notificationDetail'] ?? '').toString();
+    final dateTime = (notif['dateTime'] ?? '').toString();
+    final style = _styleForType(notifName);
+    final Color accentColor = style['color'] as Color;
+    final IconData iconData = style['icon'] as IconData;
+
+    return showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: accentColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(iconData, color: accentColor, size: 21),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          notifName,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.darkGray,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _timeAgo(dateTime),
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                            color: AppTheme.darkGray.withOpacity(0.4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                detail,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  height: 1.5,
+                  color: AppTheme.darkGray.withOpacity(0.8),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.redPink,
+                  ),
+                  child: const Text(
+                    'Close',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _markAllRead() async {
     if (_unreadCount == 0) return;
     final previous = List<Map<String, dynamic>>.from(_notifications);
@@ -286,7 +376,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       onDismissed: (_) => _removeNotification(notifId),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => _markAsRead(notifId),
+        onTap: () => _openNotificationDetail(notif),
         child: Container(
           decoration: BoxDecoration(
             color: isUnread ? accentColor.withOpacity(0.05) : AppTheme.white,
@@ -357,7 +447,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         height: 1.4,
                         color: AppTheme.darkGray.withOpacity(0.7),
                       ),
-                      maxLines: 3,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
