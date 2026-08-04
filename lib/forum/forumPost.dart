@@ -20,11 +20,25 @@ class ForumPostScreenState extends State<ForumPostScreen> {
   bool _isLoading = true;
   bool _isRefreshing = false;
   String? _error;
+  int? _currentUserId;
 
   @override
   void initState() {
     super.initState();
     _loadPosts();
+    _loadCurrentUser();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final res = await _apiService.getUserData();
+    if (!mounted) return;
+    if (res['success'] == true) {
+      final user = res['user'] as Map<String, dynamic>?;
+      final id = user?['userId'];
+      setState(() {
+        _currentUserId = id is int ? id : int.tryParse(id?.toString() ?? '');
+      });
+    }
   }
 
   List<Map<String, dynamic>> get posts => _posts;
@@ -76,6 +90,11 @@ class ForumPostScreenState extends State<ForumPostScreen> {
     });
   }
 
+  void _removePost(int forumId) {
+    setState(() {
+      _posts.removeWhere((p) => p['forumId'] == forumId);
+    });
+  }
   String _timeAgo(String dateTimeStr) {
     try {
       final dateTime = DateTime.parse(dateTimeStr);
@@ -157,12 +176,14 @@ class ForumPostScreenState extends State<ForumPostScreen> {
               return _ForumPostCard(
                 key: key,
                 post: post,
+                currentUserId: _currentUserId,
                 profileImageProvider: _resolveProfileImage(post['photo_url'] as String?),
                 forumImageProvider: _resolveForumImage(post['image'] as String?),
                 timeAgo: _timeAgo(post['createdAt'] as String),
                 formatCount: _formatCount,
                 onVoteChanged: (upCount, downCount, userVoteType) =>
                     _updatePostVote(post['forumId'] as int, upCount, downCount, userVoteType),
+                onDeleted: () => _removePost(post['forumId'] as int),
               );
             },
           ),
@@ -296,22 +317,25 @@ class ForumPostScreenState extends State<ForumPostScreen> {
 
 class _ForumPostCard extends StatefulWidget {
   final Map<String, dynamic> post;
+  final int? currentUserId;
   final ImageProvider profileImageProvider;
   final ImageProvider forumImageProvider;
   final String timeAgo;
   final String Function(int) formatCount;
   final void Function(int upCount, int downCount, int? userVoteType)? onVoteChanged;
+  final VoidCallback? onDeleted;
 
   const _ForumPostCard({
     Key? key,
     required this.post,
+    this.currentUserId,
     required this.profileImageProvider,
     required this.forumImageProvider,
     required this.timeAgo,
     required this.formatCount,
     this.onVoteChanged,
+    this.onDeleted,
   }) : super(key: key);
-
   @override
   State<_ForumPostCard> createState() => _ForumPostCardState();
 }
@@ -319,6 +343,7 @@ class _ForumPostCard extends StatefulWidget {
 class _ForumPostCardState extends State<_ForumPostCard> {
   final ApiService _apiService = ApiService();
   bool _isVoting = false;
+  bool _isDeleting = false;
   int? _userVoteType;
   int _upCount = 0;
   int _downCount = 0;
@@ -434,6 +459,57 @@ class _ForumPostCardState extends State<_ForumPostCard> {
     );
   }
 
+  Future<void> _confirmDeletePost() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Delete Post',
+          style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.darkGray),
+        ),
+        content: const Text(
+          'Are you sure you want to delete this post? This cannot be undone.',
+          style: TextStyle(color: AppTheme.darkGray),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: AppTheme.darkGray.withOpacity(0.6)),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.redPink,
+              foregroundColor: AppTheme.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || _isDeleting) return;
+
+    setState(() => _isDeleting = true);
+
+    final forumId = widget.post['forumId'] as int;
+    final result = await _apiService.removeForumPost(forumId: forumId);
+
+    if (!mounted) return;
+
+    if (result['success'] == true) {
+      widget.onDeleted?.call();
+    } else {
+      setState(() => _isDeleting = false);
+      _showSnackBar(result['message'] ?? 'Failed to delete post.');
+    }
+  }
+
   Future<void> _handleCommentTap() async {
     final updatedPost = Map<String, dynamic>.from(widget.post);
     updatedPost['upCount'] = _upCount;
@@ -472,6 +548,8 @@ class _ForumPostCardState extends State<_ForumPostCard> {
     final campusName = (widget.post['campusName'] as String? ?? '').trim();
     final message = widget.post['message'] as String? ?? '';
     final hasImage = widget.post['image'] != null && widget.post['image'].toString().isNotEmpty;
+    final postUserId = widget.post['userId'] as int?;
+    final isOwner = widget.currentUserId != null && postUserId == widget.currentUserId;
 
     return Container(
       width: double.infinity,
@@ -583,6 +661,40 @@ class _ForumPostCardState extends State<_ForumPostCard> {
                     ],
                   ),
                 ),
+                if (isOwner)
+                  _isDeleting
+                      ? const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                      : PopupMenuButton<String>(
+                    icon: Icon(
+                      Icons.more_vert_rounded,
+                      color: AppTheme.darkGray.withOpacity(0.5),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    onSelected: (value) {
+                      if (value == 'delete') _confirmDeletePost();
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline_rounded, color: AppTheme.redPink, size: 18),
+                            SizedBox(width: 8),
+                            Text('Delete Post'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             ),
           ),

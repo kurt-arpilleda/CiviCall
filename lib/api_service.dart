@@ -747,6 +747,40 @@ class ApiService {
       return _handleResponse(response);
     });
   }
+
+  Future<Map<String, dynamic>> removeForumPost({
+    required int forumId,
+  }) async {
+    return _executeWithRetry(() async {
+      final token = await _secureStorage.read(key: 'authToken') ?? '';
+      final uri = Uri.parse("${apiUrl}civicall_remove_forum.php");
+      final response = await httpClient.post(
+        uri,
+        body: {
+          'authToken': token,
+          'forumId': forumId.toString(),
+        },
+      ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
+
+  Future<Map<String, dynamic>> removeForumComment({
+    required int commentId,
+  }) async {
+    return _executeWithRetry(() async {
+      final token = await _secureStorage.read(key: 'authToken') ?? '';
+      final uri = Uri.parse("${apiUrl}civicall_remove_forum_comment.php");
+      final response = await httpClient.post(
+        uri,
+        body: {
+          'authToken': token,
+          'commentId': commentId.toString(),
+        },
+      ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
   Future<Map<String, dynamic>> getNotifications() async {
     return _executeWithRetry(() async {
       final token = await _secureStorage.read(key: 'authToken') ?? '';

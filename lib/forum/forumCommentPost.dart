@@ -37,6 +37,7 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> with Ti
   int _upCount = 0;
   int _downCount = 0;
   bool _hasText = false;
+  int? _currentUserId;
 
   final HeaderVisibilityController _headerVisibility = HeaderVisibilityController();
   static const double _appBarHeight = kToolbarHeight;
@@ -51,6 +52,19 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> with Ti
     _downCount = widget.post['downCount'] as int? ?? 0;
     _commentController.addListener(_onTextChanged);
     _loadComments();
+    _loadCurrentUser();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final res = await _apiService.getUserData();
+    if (!mounted) return;
+    if (res['success'] == true) {
+      final user = res['user'] as Map<String, dynamic>?;
+      final id = user?['userId'];
+      setState(() {
+        _currentUserId = id is int ? id : int.tryParse(id?.toString() ?? '');
+      });
+    }
   }
 
   @override
@@ -262,6 +276,60 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> with Ti
     }
   }
 
+  Future<void> _confirmDeleteComment(int commentId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Delete Comment',
+          style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.darkGray),
+        ),
+        content: const Text(
+          'Are you sure you want to delete this comment? This cannot be undone.',
+          style: TextStyle(color: AppTheme.darkGray),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: AppTheme.darkGray.withOpacity(0.6)),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.redPink,
+              foregroundColor: AppTheme.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    final result = await _apiService.removeForumComment(commentId: commentId);
+    if (!mounted) return;
+
+    if (result['success'] == true) {
+      setState(() {
+        _comments.removeWhere((c) => c['commentId'] == commentId);
+      });
+      final newCount = result['commentCount'] as int? ?? _comments.length;
+      setState(() {
+        if (_post != null) _post!['commentCount'] = newCount;
+      });
+      widget.onCommentCountChanged?.call(newCount);
+      _showSnackBar('Comment deleted.', isSuccess: true);
+    } else {
+      _showSnackBar(result['message'] ?? 'Failed to delete comment.');
+    }
+  }
+
   void _showSnackBar(String message, {bool isSuccess = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -330,6 +398,8 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> with Ti
                               comment: c,
                               timeAgo: _timeAgo(c['createdAt'] as String?),
                               profileImageProvider: _resolveProfileImage(c['photo_url'] as String?),
+                              isOwner: _currentUserId != null && c['userId'] == _currentUserId,
+                              onDelete: () => _confirmDeleteComment(c['commentId'] as int),
                             )),
                         ],
                       ),
@@ -871,11 +941,15 @@ class _CommentTile extends StatelessWidget {
   final Map<String, dynamic> comment;
   final String timeAgo;
   final ImageProvider profileImageProvider;
+  final bool isOwner;
+  final VoidCallback? onDelete;
 
   const _CommentTile({
     required this.comment,
     required this.timeAgo,
     required this.profileImageProvider,
+    this.isOwner = false,
+    this.onDelete,
   });
 
   @override
@@ -959,6 +1033,35 @@ class _CommentTile extends StatelessWidget {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
+                    if (isOwner) ...[
+                      const Spacer(),
+                      PopupMenuButton<String>(
+                        padding: EdgeInsets.zero,
+                        icon: Icon(
+                          Icons.more_vert_rounded,
+                          size: 16,
+                          color: AppTheme.darkGray.withOpacity(0.4),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        onSelected: (value) {
+                          if (value == 'delete') onDelete?.call();
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline_rounded, color: AppTheme.redPink, size: 18),
+                                SizedBox(width: 8),
+                                Text('Delete Comment'),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
                 if (campusName.isNotEmpty) ...[
