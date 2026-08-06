@@ -330,6 +330,92 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> with Ti
     }
   }
 
+  Future<void> _confirmReportComment(int commentId) async {
+    const reportReasons = [
+      'Spam',
+      'Harassment or Bullying',
+      'Hate Speech',
+      'False Information',
+      'Inappropriate Content',
+      'Others',
+    ];
+    String? selectedReason;
+    final othersController = TextEditingController();
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text(
+            'Report Comment',
+            style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.darkGray),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ...reportReasons.map((reason) => RadioListTile<String>(
+                  value: reason,
+                  groupValue: selectedReason,
+                  onChanged: (value) => setDialogState(() => selectedReason = value),
+                  title: Text(reason, style: const TextStyle(fontSize: 14, color: AppTheme.darkGray)),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                )),
+                if (selectedReason == 'Others')
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: TextField(
+                      controller: othersController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText: 'Please specify',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('Cancel', style: TextStyle(color: AppTheme.darkGray.withOpacity(0.6))),
+            ),
+            ElevatedButton(
+              onPressed: selectedReason == null ? null : () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.redPink,
+                foregroundColor: AppTheme.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Submit'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirm != true || selectedReason == null) return;
+
+    final result = await _apiService.reportForum(
+      targetId: commentId,
+      targetType: 'comment',
+      reason: selectedReason!,
+      details: selectedReason == 'Others' ? othersController.text.trim() : null,
+    );
+
+    if (!mounted) return;
+
+    if (result['success'] == true) {
+      _showSnackBar('Comment reported successfully.', isSuccess: true);
+    } else {
+      _showSnackBar(result['message'] ?? 'Failed to report comment.');
+    }
+  }
+
   void _showSnackBar(String message, {bool isSuccess = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -400,6 +486,7 @@ class _ForumCommentPostScreenState extends State<ForumCommentPostScreen> with Ti
                               profileImageProvider: _resolveProfileImage(c['photo_url'] as String?),
                               isOwner: _currentUserId != null && c['userId'] == _currentUserId,
                               onDelete: () => _confirmDeleteComment(c['commentId'] as int),
+                              onReport: () => _confirmReportComment(c['commentId'] as int),
                             )),
                         ],
                       ),
@@ -943,6 +1030,7 @@ class _CommentTile extends StatelessWidget {
   final ImageProvider profileImageProvider;
   final bool isOwner;
   final VoidCallback? onDelete;
+  final VoidCallback? onReport;
 
   const _CommentTile({
     required this.comment,
@@ -950,8 +1038,8 @@ class _CommentTile extends StatelessWidget {
     required this.profileImageProvider,
     this.isOwner = false,
     this.onDelete,
+    this.onReport,
   });
-
   @override
   Widget build(BuildContext context) {
     final firstName = comment['firstName'] as String? ?? '';
@@ -1033,22 +1121,23 @@ class _CommentTile extends StatelessWidget {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    if (isOwner) ...[
-                      const Spacer(),
-                      PopupMenuButton<String>(
-                        padding: EdgeInsets.zero,
-                        icon: Icon(
-                          Icons.more_vert_rounded,
-                          size: 16,
-                          color: AppTheme.darkGray.withOpacity(0.4),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        onSelected: (value) {
-                          if (value == 'delete') onDelete?.call();
-                        },
-                        itemBuilder: (context) => [
+                    const Spacer(),
+                    PopupMenuButton<String>(
+                      padding: EdgeInsets.zero,
+                      icon: Icon(
+                        Icons.more_vert_rounded,
+                        size: 16,
+                        color: AppTheme.darkGray.withOpacity(0.4),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      onSelected: (value) {
+                        if (value == 'delete') onDelete?.call();
+                        if (value == 'report') onReport?.call();
+                      },
+                      itemBuilder: (context) => [
+                        if (isOwner)
                           const PopupMenuItem(
                             value: 'delete',
                             child: Row(
@@ -1058,10 +1147,20 @@ class _CommentTile extends StatelessWidget {
                                 Text('Delete Comment'),
                               ],
                             ),
+                          )
+                        else
+                          const PopupMenuItem(
+                            value: 'report',
+                            child: Row(
+                              children: [
+                                Icon(Icons.flag_outlined, color: AppTheme.redPink, size: 18),
+                                SizedBox(width: 8),
+                                Text('Report Comment'),
+                              ],
+                            ),
                           ),
-                        ],
-                      ),
-                    ],
+                      ],
+                    ),
                   ],
                 ),
                 if (campusName.isNotEmpty) ...[

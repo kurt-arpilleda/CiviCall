@@ -510,6 +510,93 @@ class _ForumPostCardState extends State<_ForumPostCard> {
     }
   }
 
+  Future<void> _confirmReportPost() async {
+    final forumId = widget.post['forumId'] as int;
+    const reportReasons = [
+      'Spam',
+      'Harassment or Bullying',
+      'Hate Speech',
+      'False Information',
+      'Inappropriate Content',
+      'Others',
+    ];
+    String? selectedReason;
+    final othersController = TextEditingController();
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text(
+            'Report Post',
+            style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.darkGray),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ...reportReasons.map((reason) => RadioListTile<String>(
+                  value: reason,
+                  groupValue: selectedReason,
+                  onChanged: (value) => setDialogState(() => selectedReason = value),
+                  title: Text(reason, style: const TextStyle(fontSize: 14, color: AppTheme.darkGray)),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                )),
+                if (selectedReason == 'Others')
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: TextField(
+                      controller: othersController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText: 'Please specify',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('Cancel', style: TextStyle(color: AppTheme.darkGray.withOpacity(0.6))),
+            ),
+            ElevatedButton(
+              onPressed: selectedReason == null ? null : () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.redPink,
+                foregroundColor: AppTheme.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Submit'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirm != true || selectedReason == null) return;
+
+    final result = await _apiService.reportForum(
+      targetId: forumId,
+      targetType: 'post',
+      reason: selectedReason!,
+      details: selectedReason == 'Others' ? othersController.text.trim() : null,
+    );
+
+    if (!mounted) return;
+
+    if (result['success'] == true) {
+      _showSnackBar('Post reported successfully.');
+    } else {
+      _showSnackBar(result['message'] ?? 'Failed to report post.');
+    }
+  }
+
   Future<void> _handleCommentTap() async {
     final updatedPost = Map<String, dynamic>.from(widget.post);
     updatedPost['upCount'] = _upCount;
@@ -661,28 +748,29 @@ class _ForumPostCardState extends State<_ForumPostCard> {
                     ],
                   ),
                 ),
-                if (isOwner)
-                  _isDeleting
-                      ? const Padding(
-                    padding: EdgeInsets.all(8),
-                    child: SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  )
-                      : PopupMenuButton<String>(
-                    icon: Icon(
-                      Icons.more_vert_rounded,
-                      color: AppTheme.darkGray.withOpacity(0.5),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    onSelected: (value) {
-                      if (value == 'delete') _confirmDeletePost();
-                    },
-                    itemBuilder: (context) => [
+                _isDeleting
+                    ? const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+                    : PopupMenuButton<String>(
+                  icon: Icon(
+                    Icons.more_vert_rounded,
+                    color: AppTheme.darkGray.withOpacity(0.5),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  onSelected: (value) {
+                    if (value == 'delete') _confirmDeletePost();
+                    if (value == 'report') _confirmReportPost();
+                  },
+                  itemBuilder: (context) => [
+                    if (isOwner)
                       const PopupMenuItem(
                         value: 'delete',
                         child: Row(
@@ -692,9 +780,20 @@ class _ForumPostCardState extends State<_ForumPostCard> {
                             Text('Delete Post'),
                           ],
                         ),
+                      )
+                    else
+                      const PopupMenuItem(
+                        value: 'report',
+                        child: Row(
+                          children: [
+                            Icon(Icons.flag_outlined, color: AppTheme.redPink, size: 18),
+                            SizedBox(width: 8),
+                            Text('Report Post'),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
+                  ],
+                ),
               ],
             ),
           ),

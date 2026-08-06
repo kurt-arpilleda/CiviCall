@@ -781,6 +781,30 @@ class ApiService {
       return _handleResponse(response);
     });
   }
+
+  Future<Map<String, dynamic>> reportForum({
+    required int targetId,
+    required String targetType,
+    required String reason,
+    String? details,
+  }) async {
+    return _executeWithRetry(() async {
+      final token = await _secureStorage.read(key: 'authToken') ?? '';
+      final uri = Uri.parse("${apiUrl}civicall_report_forum.php");
+      final response = await httpClient.post(
+        uri,
+        body: {
+          'authToken': token,
+          'targetId': targetId.toString(),
+          'targetType': targetType,
+          'reason': reason,
+          'details': details ?? '',
+        },
+      ).timeout(requestTimeout);
+      return _handleResponse(response);
+    });
+  }
+
   Future<Map<String, dynamic>> getNotifications() async {
     return _executeWithRetry(() async {
       final token = await _secureStorage.read(key: 'authToken') ?? '';
